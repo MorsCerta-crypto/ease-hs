@@ -100,23 +100,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Tool Selection
-    document.querySelectorAll('.toolbox button[id^="tool-"]').forEach(button => {
+    document.querySelectorAll('.toolbox button[id^="tool-"], .toolbox button.tool-symbol').forEach(button => {
         button.addEventListener('click', () => {
-            currentTool = button.id.replace('tool-', '');
-            console.log('Tool selected:', currentTool);
+            // Remove primary class from all buttons
+            document.querySelectorAll('.toolbox button').forEach(btn => btn.classList.remove('uk-button-primary'));
+            
             if (button.classList.contains('tool-symbol')) {
                 selectedSymbol = {
                     kind: button.dataset.symbolKind,
                     src: button.dataset.symbolSrc,
-                    width: button.dataset.symbolWidth,
-                    height: button.dataset.symbolHeight
+                    width: parseInt(button.dataset.symbolWidth),
+                    height: parseInt(button.dataset.symbolHeight)
                 };
                 console.log('Symbol selected:', selectedSymbol);
                 currentTool = 'symbol';
             } else {
+                currentTool = button.id.replace('tool-', '');
                 selectedSymbol = null;
             }
-            document.querySelectorAll('.toolbox button').forEach(btn => btn.classList.remove('uk-button-primary'));
+            
+            // Add primary class to selected button
             button.classList.add('uk-button-primary');
         });
     });
@@ -161,9 +164,23 @@ document.addEventListener('DOMContentLoaded', () => {
             svg.appendChild(currentElement);
         } else if (currentTool === 'symbol' && selectedSymbol) {
             console.log('Placing symbol:', selectedSymbol);
-            currentElement = createSvgElement('symbol', { x: startX, y: startY, symbol: selectedSymbol });
+            currentElement = createSvgElement('symbol', { 
+                x: startX, 
+                y: startY, 
+                symbol: selectedSymbol 
+            });
             svg.appendChild(currentElement);
-            saveElementToServer(currentElement);
+            saveElementToServer(currentElement).then(() => {
+                // After saving, select the new element
+                selectedElement = currentElement;
+                addSelectionHighlight(selectedElement);
+                loadInfoForElement(selectedElement.dataset.elementId);
+                // Switch back to select mode
+                document.querySelectorAll('.toolbox button').forEach(btn => btn.classList.remove('uk-button-primary'));
+                document.getElementById('tool-select').classList.add('uk-button-primary');
+                currentTool = 'select';
+                selectedSymbol = null;
+            });
             addResizeHandles(currentElement);
         }
     });
@@ -298,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.setAttribute('x2', data.x);
                 el.setAttribute('y2', data.y);
                 el.setAttribute('stroke', '#e24a4a');
-                el.setAttribute('stroke-width', '4'); // Make lines thicker for easier clicking
+                el.setAttribute('stroke-width', '4');
                 el.setAttribute('fill', 'none');
                 break;
             case 'circle':
@@ -318,13 +335,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.setAttribute('height', data.symbol.height);
                 el.setAttributeNS('http://www.w3.org/1999/xlink', 'href', data.symbol.src);
                 el.dataset.symbolKind = data.symbol.kind;
+                el.dataset.elementType = 'symbol';
                 break;
         }
 
         if (el) {
             el.classList.add('layout-item');
             el.dataset.elementId = '';
-            el.dataset.elementType = type;
         }
         return el;
     }
@@ -405,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = '/element';
         if (elementId) data.id = elementId;
 
-        fetch(url, {
+        return fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -420,9 +437,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.dataset.elementId = result.new_id;
                 el.id = `el-${result.new_id}`;
             }
+            return result;
         })
         .catch(error => {
             console.error('Error saving element:', error);
+            throw error;
         });
     }
 

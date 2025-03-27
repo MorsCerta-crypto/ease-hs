@@ -203,7 +203,7 @@ async def get_layout(building_id: int):
         if el.element_type == 'rect':
             svg_elements.append(Rect(**attrs, width=el.width, height=el.height))
         elif el.element_type == 'line':
-            svg_elements.append(Line(**attrs, x1=el.x, y1=el.y, x2=el.x2, y2=el.y2, fill="none")) # Fill=none for lines
+            svg_elements.append(Line(**attrs, x1=el.x, y1=el.y, x2=el.x2, y2=el.y2))#, fill="none")) # Fill=none for lines
         elif el.element_type == 'circle':
             # SVG uses cx, cy for center
             svg_elements.append(Circle(**attrs, cx=el.x, cy=el.y, r=el.radius))
