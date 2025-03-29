@@ -1,112 +1,244 @@
-/* Floor Planner CSS */
+/* Sicherheits-Grundrissplaner Stylesheets */
+
 .floorplan-editor {
     display: grid;
     grid-template-columns: 250px 1fr 250px;
-    grid-template-rows: 1fr auto;
-    height: calc(100vh - 120px);
+    grid-template-rows: auto 1fr auto;
+    height: calc(100vh - 80px);
     gap: 10px;
-    margin-top: 20px;
+}
+
+.mode-toggle-panel {
+    grid-column: 1 / 4;
+    background-color: #f5f5f5;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.mode-toggle-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.mode-toggle-container {
+    margin-left: 10px;
+}
+
+.mode-toggle-switch {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.mode-toggle-checkbox {
+    display: none;
+}
+
+.mode-label {
+    display: inline-block;
+    padding: 6px 12px;
+    background-color: #e0e0e0;
+    color: #666;
+    border-radius: 4px;
+    margin: 0 5px;
+    transition: all 0.3s;
+}
+
+.mode-label.active {
+    background-color: #1e88e5;
+    color: white;
 }
 
 .tool-container {
     grid-column: 1;
-    grid-row: 1;
-    overflow-y: auto;
-}
-
-.editor-main {
-    grid-column: 2;
-    grid-row: 1;
-    background-color: #f5f5f5;
-    border-radius: 5px;
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-}
-
-.properties-container {
-    grid-column: 3;
-    grid-row: 1;
-    overflow-y: auto;
-}
-
-.bottom-toolbar {
-    grid-column: 1 / span 3;
     grid-row: 2;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    background-color: #f9f9f9;
-    border-radius: 5px;
-    margin-top: 10px;
-}
-
-.canvas-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-}
-
-#floorplan-canvas {
-    background-color: white;
-    cursor: crosshair;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
 }
 
 .tool-sidebar {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 15px;
+    gap: 8px;
 }
 
-.properties-sidebar {
-    padding: 15px;
+.safety-info-container {
+    grid-column: 1;
+    grid-row: 2;
+    overflow-y: auto;
 }
 
-.properties-panel {
+.safety-info-sidebar {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+.editor-main {
+    grid-column: 2;
+    grid-row: 2;
+    overflow: auto;
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.canvas-container {
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.properties-container {
+    grid-column: 3;
+    grid-row: 2;
+    overflow-y: auto;
+}
+
+.properties-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.bottom-toolbar {
+    grid-column: 1 / 4;
+    grid-row: 3;
+    background-color: #f5f5f5;
+    padding: 10px;
+    border-top: 1px solid #ddd;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    align-items: center;
 }
 
 .tool-btn {
     text-align: left;
-    padding: 10px 15px;
-    border-radius: 5px;
-    background-color: #f0f0f0;
-    color: #333;
-    border: 1px solid #ddd;
-    transition: all 0.2s;
-}
-
-.tool-btn:hover {
-    background-color: #e0e0e0;
+    display: flex;
+    align-items: center;
 }
 
 .tool-btn.active {
-    background-color: #007bff;
+    background-color: #1e88e5;
     color: white;
-    border-color: #0069d9;
 }
 
-.element-props-form {
+.properties-panel {
+    padding: 10px;
+}
+
+.safety-info-form {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 15px;
+}
+
+.safety-info-form.hidden {
+    display: none;
+}
+
+.element-details-section,
+.safety-info-section,
+.tech-specs-section,
+.documents-section {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+.documents-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.document-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.document-date {
+    color: #666;
+    font-size: 0.8em;
+}
+
+.save-safety-btn {
+    margin-top: 15px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+    .floorplan-editor {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr auto auto;
+    }
+    
+    .mode-toggle-panel {
+        grid-column: 1;
+        grid-row: 1;
+    }
+    
+    .tool-container,
+    .safety-info-container {
+        grid-column: 1;
+        grid-row: 2;
+    }
+    
+    .editor-main {
+        grid-column: 1;
+        grid-row: 3;
+    }
+    
+    .properties-container {
+        grid-column: 1;
+        grid-row: 4;
+    }
+    
+    .bottom-toolbar {
+        grid-column: 1;
+        grid-row: 5;
+    }
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Authentication related styles */
+.error-message {
+    color: #f44336;
+    padding: 10px;
+    margin: 10px 0;
+    border-left: 4px solid #f44336;
+    background-color: rgba(244, 67, 54, 0.1);
 }
 
 .success-message {
-    color: #28a745;
-    padding: 8px;
-    font-weight: bold;
+    color: #4caf50;
+    padding: 10px;
+    margin: 10px 0;
+    border-left: 4px solid #4caf50;
+    background-color: rgba(76, 175, 80, 0.1);
 }
 
-.error-message {
-    color: #dc3545;
-    padding: 8px;
-    font-weight: bold;
+.warning-message {
+    color: #ff9800;
+    padding: 10px;
+    margin: 10px 0;
+    border-left: 4px solid #ff9800;
+    background-color: rgba(255, 152, 0, 0.1);
+}
+
+.ml-2 {
+    margin-left: 0.5rem;
+}
+
+.mr-3 {
+    margin-right: 1rem;
 }
 
 /* Floor plan elements styling */
@@ -145,4 +277,96 @@
     stroke: #333;
     stroke-width: 1;
     opacity: 0.8;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.header-left, .header-right {
+    display: flex;
+    align-items: center;
+}
+
+.header-right > * {
+    margin-left: 10px;
+}
+
+.floorplan-container {
+    min-height: 400px;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Add these styles for proper modal display */
+.uk-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1010;
+    overflow-y: auto;
+}
+
+.uk-modal.uk-open {
+    display: block;
+}
+
+/* Style for delete button */
+.tool-btn[data-tool="delete"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.tool-btn[data-tool="delete"]:not(:disabled) {
+    background-color: #d9534f;
+    color: white;
+}
+
+/* Add styling for escape routes */
+.fluchtwege {
+    stroke: #4CAF50;
+    stroke-width: 3;
+    stroke-dasharray: 5, 3;
+    fill: none;
+}
+
+/* Make the escape route button special */
+/* .tool-btn[data-tool="fluchtwege"] {
+    background-color: #1e88e5;
+    color: white;
+}
+
+.tool-btn[data-tool="fluchtwege"]:hover {
+    background-color: #1976d2;
+}
+
+.tool-btn[data-tool="fluchtwege"].active {
+    background-color: #1e88e5;
+} */
+
+/* Tooltip for canvas */
+#canvas-tooltip {
+    position: absolute;
+    background-color: white;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    pointer-events: none;
+    z-index: 1000;
+    font-size: 14px;
+    color: #333;
+    max-width: 200px;
 } 

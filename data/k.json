@@ -5,71 +5,71 @@
   "height": 15.0,
   "elements": [
     {
-      "id": "element_1743249146372_853",
+      "id": "element_1743256860848_302",
       "element_type": "wall",
       "start": {
-        "x": 2,
-        "y": 2.5
+        "x": 1.5,
+        "y": 2
       },
       "end": {
-        "x": 13.5,
-        "y": 2.5
+        "x": 8.5,
+        "y": 2
       },
       "width": 0.2,
       "properties": {}
     },
     {
-      "id": "element_1743249149387_195",
+      "id": "element_1743256863623_470",
       "element_type": "wall",
       "start": {
-        "x": 2,
-        "y": 3
+        "x": 1.5,
+        "y": 2
       },
       "end": {
-        "x": 2,
-        "y": 6.5
+        "x": 1.5,
+        "y": 5.5
       },
       "width": 0.2,
       "properties": {}
     },
     {
-      "id": "element_1743249150617_664",
+      "id": "element_1743256864822_743",
       "element_type": "wall",
       "start": {
-        "x": 2.013888888888889,
-        "y": 3.0277777777777777
+        "x": 1.5,
+        "y": 5.5
       },
       "end": {
-        "x": 2.013888888888889,
-        "y": 2.527777777777778
+        "x": 8.5,
+        "y": 5.5
       },
       "width": 0.2,
       "properties": {}
     },
     {
-      "id": "element_1743249167551_211",
-      "element_type": "window",
+      "id": "element_1743256866338_382",
+      "element_type": "wall",
       "start": {
-        "x": 2,
-        "y": 5
+        "x": 8.5,
+        "y": 2
       },
       "end": {
-        "x": 2,
-        "y": 4
+        "x": 8.5,
+        "y": 5.5
       },
       "width": 0.2,
       "properties": {}
     },
     {
-      "id": "element_1743249171377_425",
+      "id": "element_1743256870658_686",
       "element_type": "machine",
       "start": {
-        "x": 3,
-        "y": 3.5
+        "x": 2,
+        "y": 2.5
       },
       "end": {
-        "x": 4.5,
-        "y": 4.5
+        "x": 3,
+        "y": 3.5
       },
       "width": 0.2,
       "properties": {
@@ -79,49 +79,39 @@
       }
     },
     {
-      "id": "element_1743249174436_960",
-      "element_type": "closet",
+      "id": "element_1743256872159_947",
+      "element_type": "machine",
       "start": {
-        "x": 6,
-        "y": 3
+        "x": 5,
+        "y": 2.5
       },
       "end": {
-        "x": 8,
-        "y": 4
+        "x": 6.5,
+        "y": 3.5
+      },
+      "width": 0.2,
+      "properties": {
+        "name": "Machine",
+        "description": "Equipment description",
+        "hazardLevel": 1
+      }
+    },
+    {
+      "id": "element_1743256875233_118",
+      "element_type": "closet",
+      "start": {
+        "x": 3,
+        "y": 4.5
+      },
+      "end": {
+        "x": 6,
+        "y": 5.5
       },
       "width": 0.2,
       "properties": {
         "contentType": "chemical",
         "description": "Hazardous materials storage"
       }
-    },
-    {
-      "id": "element_1743249181141_610",
-      "element_type": "door-emergency",
-      "start": {
-        "x": 9.5,
-        "y": 2.5
-      },
-      "end": {
-        "x": 11,
-        "y": 2.5
-      },
-      "width": 0.2,
-      "properties": {}
-    },
-    {
-      "id": "element_1743249185056_588",
-      "element_type": "door-standard",
-      "start": {
-        "x": 2,
-        "y": 5.5
-      },
-      "end": {
-        "x": 2,
-        "y": 6
-      },
-      "width": 0.2,
-      "properties": {}
     }
   ]
 }
