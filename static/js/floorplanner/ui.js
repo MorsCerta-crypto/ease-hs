@@ -169,7 +169,7 @@ function updatePropertiesPanel() {
     if (!propertiesPanel) return;
     
     if (!currentState.selectedElement) {
-        propertiesPanel.innerHTML = '<p>No element selected</p>';
+        propertiesPanel.innerHTML = '<p>Kein Element ausgewählt</p>';
         return;
     }
     
@@ -179,18 +179,18 @@ function updatePropertiesPanel() {
         <form class="element-props-form">
             <input type="hidden" id="element-id" value="${element.id}">
             
-            <label>Type</label>
+            <label>Typ</label>
             <select id="element-type" onchange="updateElementProperty('element_type', this.value)">
-                <option value="wall" ${element.element_type === 'wall' ? 'selected' : ''}>Wall</option>
-                <option value="door-standard" ${element.element_type === 'door-standard' ? 'selected' : ''}>Door (Standard)</option>
-                <option value="door-emergency" ${element.element_type === 'door-emergency' ? 'selected' : ''}>Door (Emergency)</option>
-                <option value="window" ${element.element_type === 'window' ? 'selected' : ''}>Window</option>
-                <option value="emergency-route" ${element.element_type === 'emergency-route' ? 'selected' : ''}>Emergency Route</option>
-                <option value="machine" ${element.element_type === 'machine' ? 'selected' : ''}>Machine</option>
-                <option value="closet" ${element.element_type === 'closet' ? 'selected' : ''}>Safety Closet</option>
+                <option value="wall" ${element.element_type === 'wall' ? 'selected' : ''}>Wand</option>
+                <option value="door-standard" ${element.element_type === 'door-standard' ? 'selected' : ''}>Tür (Standard)</option>
+                <option value="door-emergency" ${element.element_type === 'door-emergency' ? 'selected' : ''}>Tür (Notausgang)</option>
+                <option value="window" ${element.element_type === 'window' ? 'selected' : ''}>Fenster</option>
+                <option value="emergency-route" ${element.element_type === 'emergency-route' ? 'selected' : ''}>Fluchtweg</option>
+                <option value="machine" ${element.element_type === 'machine' ? 'selected' : ''}>Maschine</option>
+                <option value="closet" ${element.element_type === 'closet' ? 'selected' : ''}>Sicherheitsschrank</option>
             </select>
             
-            <label>Width (m)</label>
+            <label>Breite (m)</label>
             <input type="number" id="element-width" value="${element.width}" step="0.05" min="0.1" max="2" 
                    onchange="updateElementProperty('width', parseFloat(this.value))">
     `;
@@ -202,39 +202,39 @@ function updatePropertiesPanel() {
             <input type="text" id="machine-name" value="${element.properties.name || ''}" 
                    onchange="updateElementProperty('properties.name', this.value)">
             
-            <label>Description</label>
+            <label>Beschreibung</label>
             <textarea id="machine-description" rows="3" 
                       onchange="updateElementProperty('properties.description', this.value)">${element.properties.description || ''}</textarea>
             
-            <label>Hazard Level (1-5)</label>
+            <label>Gefährdungsstufe (1-5)</label>
             <input type="number" id="machine-hazard" value="${element.properties.hazardLevel || 1}" min="1" max="5" 
                    onchange="updateElementProperty('properties.hazardLevel', parseInt(this.value))">
         `;
     } else if (element.element_type === 'closet') {
         propertiesForm += `
-            <label>Content Type</label>
+            <label>Inhaltstyp</label>
             <select id="closet-type" onchange="updateElementProperty('properties.contentType', this.value)">
-                <option value="chemical" ${(element.properties.contentType || '') === 'chemical' ? 'selected' : ''}>Chemical</option>
-                <option value="flammable" ${(element.properties.contentType || '') === 'flammable' ? 'selected' : ''}>Flammable</option>
-                <option value="biological" ${(element.properties.contentType || '') === 'biological' ? 'selected' : ''}>Biological</option>
-                <option value="radioactive" ${(element.properties.contentType || '') === 'radioactive' ? 'selected' : ''}>Radioactive</option>
-                <option value="other" ${(element.properties.contentType || '') === 'other' ? 'selected' : ''}>Other</option>
+                <option value="chemical" ${(element.properties.contentType || '') === 'chemical' ? 'selected' : ''}>Chemikalien</option>
+                <option value="flammable" ${(element.properties.contentType || '') === 'flammable' ? 'selected' : ''}>Entzündlich</option>
+                <option value="biological" ${(element.properties.contentType || '') === 'biological' ? 'selected' : ''}>Biologisch</option>
+                <option value="radioactive" ${(element.properties.contentType || '') === 'radioactive' ? 'selected' : ''}>Radioaktiv</option>
+                <option value="other" ${(element.properties.contentType || '') === 'other' ? 'selected' : ''}>Sonstiges</option>
             </select>
             
-            <label>Description</label>
+            <label>Beschreibung</label>
             <textarea id="closet-description" rows="3" 
                       onchange="updateElementProperty('properties.description', this.value)">${element.properties.description || ''}</textarea>
         `;
     } else if (element.element_type === 'emergency-route') {
         propertiesForm += `
-            <label>Route Name</label>
-            <input type="text" id="route-name" value="${element.properties?.routeName || 'Emergency Exit Route'}" 
+            <label>Routenname</label>
+            <input type="text" id="route-name" value="${element.properties?.routeName || 'Notausgang'}" 
                    onchange="updateElementProperty('properties.routeName', this.value)">
             
-            <label>Exit Point</label>
+            <label>Ausgangspunkt</label>
             <select id="route-exit-point" onchange="updateElementProperty('properties.exitPoint', this.value)">
-                <option value="start" ${(element.properties?.exitPoint || '') === 'start' ? 'selected' : ''}>Start Point</option>
-                <option value="end" ${(element.properties?.exitPoint || '') === 'end' ? 'selected' : ''}>End Point</option>
+                <option value="start" ${(element.properties?.exitPoint || '') === 'start' ? 'selected' : ''}>Startpunkt</option>
+                <option value="end" ${(element.properties?.exitPoint || '') === 'end' ? 'selected' : ''}>Endpunkt</option>
             </select>
         `;
     }

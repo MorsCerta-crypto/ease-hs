@@ -9,31 +9,17 @@ from src.db import floorplans
 ar = APIRouter()
 
 # Serialization/deserialization functions
-def serialize_floorplan(floorplan_data):
-    """Serialize floorplan data for storage in database"""
-    return json.dumps(floorplan_data.get("elements", []))
-
-def deserialize_floorplan(db_floorplan):
-    """Deserialize floorplan data from database"""
-    return {
-        "id": db_floorplan.id,
-        "name": db_floorplan.name,
-        "width": db_floorplan.width,
-        "height": db_floorplan.height,
-        "elements": json.loads(db_floorplan.data) if db_floorplan.data else []
-    }
-
 # Create a new floor plan
 @ar.get("/create_floorplan")
 def create_floorplan():
     return Card(
-        CardHeader(H3("New Floor Plan")),
+        CardHeader(H3("Neuer Grundriss")),
         CardBody(
             Form(
-                LabelInput("Floor Plan Name", name="name", required=True),
-                LabelInput("Width (meters)", name="width", type="number", value="20", min="5", max="100"),
-                LabelInput("Height (meters)", name="height", type="number", value="15", min="5", max="100"),
-                Button("Create", type="submit", hx_post=initialize_floorplan, hx_target="#main-content")
+                LabelInput("Grundriss Name", name="name", required=True),
+                LabelInput("Breite (Meter)", name="width", type="number", value="20", min="5", max="100"),
+                LabelInput("Höhe (Meter)", name="height", type="number", value="15", min="5", max="100"),
+                Button("Erstellen", type="submit", hx_post=initialize_floorplan, hx_target="#main-content")
             )
         )
     )
@@ -59,14 +45,14 @@ def load_floorplan():
     # Get list of floor plans from database
     db_floorplans = floorplans(where='user_id=?', where_args=(1,))
     if not db_floorplans:
-        return Card(H3("No Floor Plans Found"),
-            P("No existing floor plans found. Create a new one to get started."),
-            Button("Create New", hx_get=create_floorplan, hx_target="#main-content"))
+        return Card(H3("Keine Grundrisse gefunden"),
+            P("Keine vorhandenen Grundrisse gefunden. Erstellen Sie einen neuen, um zu beginnen."),
+            Button("Neu erstellen", hx_get=create_floorplan, hx_target="#main-content"))
     
     return Card(
-        CardHeader(H3("Load Floor Plan")),
+        CardHeader(H3("Grundriss laden")),
         CardBody(
-            Div(P("Select a floor plan to load:"),
+            Div(P("Wählen Sie einen Grundriss zum Laden:"),
                 Ul(*[Li(Button(plan.name, hx_get=floorplan_editor.to(floorplan_id=plan.id), hx_target="#main-content")) for plan in db_floorplans]),
                 cls="space-y-4")))
 
@@ -87,65 +73,67 @@ def editor(floorplan_id: int, width, height, data):
         )
     
 def floorplan_properties():
-    return Div(Card(H4("Properties"),
+    return Div(Card(H4("Eigenschaften"),
                 Div(id="element-properties", cls="properties-panel"),
                 cls=""),
             cls="")
-def controls():
+def controls(floorplan_id:int):
     return DivHStacked(
-            Button("Save", On(code="saveChanges()",event="click")),
-            Button("Export as PNG", id="export-png"),
-            Button("Back to Home", hx_get='/', hx_target="#main-content"),
-            Div(id="save-status", _="every 20s set .innerHTML to ''"),)
+            Button("Speichern", hx_post=f'/save_floorplan/{floorplan_id}', hx_target="#save-status", hx_vals="js:{elements: JSON.stringify(currentState.elements)}"),
+            Button("Als PNG exportieren", id="export-png"),
+            Button("Zurück zur Startseite", hx_get='/', hx_target="#main-content"),
+            Div(id="save-status"))
     
     
 def tools():
     return Div(
             Card(
-                H4("Tools"),
+                H4("Werkzeuge"),
                 DivVStacked(
-                Button("Select", cls="", data_tool="select"),
-                Button("Wall", cls="", data_tool="wall"),
-                Button("Door (Standard)", cls="", data_tool="door-standard"),
-                Button("Door (Emergency)", cls="", data_tool="door-emergency"),
-                Button("Window", cls="", data_tool="window"),
-                Button("Emergency Route", cls="", data_tool="emergency-route"),
-                Button("Machine", cls="", data_tool="machine"),
-                Button("Safety Closet", cls="", data_tool="closet"),
-                Button("Delete", cls="", onclick="deleteSelectedElement()"),
+                Button("Auswählen", cls="tool-btn", data_tool="select", submit=False),
+                Button("Wand", cls="tool-btn", data_tool="wall", submit=False),
+                Button("Tür (Standard)", cls="tool-btn", data_tool="door-standard", submit=False),
+                Button("Tür (Notausgang)", cls="tool-btn", data_tool="door-emergency", submit=False),
+                Button("Fenster", cls="tool-btn", data_tool="window", submit=False),
+                Button("Fluchtweg", cls="tool-btn", data_tool="emergency-route", submit=False),
+                Button("Maschine", cls="tool-btn", data_tool="machine", submit=False),
+                Button("Sicherheitsschrank", cls="tool-btn", data_tool="closet", submit=False),
+                Button("Löschen", id="delete-btn", onclick="deleteSelectedElement()", submit=False),
                 cls=""
             )),
             cls=""
         )
+    
+@ar.get("/floorplan_editor/change-mode")
+def change_mode(sess):
+    mode = sess['floorplan-mode']
+    if mode == 'edit':
+        sess['floorplan-mode'] = 'select'
+    else:
+        sess['floorplan-mode'] = 'edit'
+    return ""
+
 @ar.get('/floorplan_editor/{floorplan_id}')
-def floorplan_editor(floorplan_id: int):
+def floorplan_editor(sess,floorplan_id: int):
     # Load floor plan data from database
+    if not 'floorplan-mode' in sess: sess['floorplan-mode'] = 'edit'
+    mode = sess['floorplan-mode']
     try:
         floorplan = floorplans.fetchone(id=floorplan_id)
         if not floorplan:
             raise ValueError("Floorplan not found")
-        print(type(floorplan.data))
-        sf = deserialize_floorplan(floorplan)
-        print(sf)
-        # Deserialize floorplan data for use in the editor
-        print(f'Floorplan has elements: {"\n".join(sf["elements"])}')
+        print(floorplan.data)
     except Exception as e:
         return Card(
-            H3("Error"),
-            P(f"Could not load floor plan: {str(e)}"),
-            Button("Back to Home", hx_get='/', hx_target="#main-content")
-        )
-
-    
+            H3("Fehler"),
+            P(f"Grundriss konnte nicht geladen werden: {str(e)}"),
+            Button("Zurück zur Startseite", hx_get='/', hx_target="#main-content"))
     
     return DivVStacked(
-        # Left sidebar with tools
-        # Bottom toolbar
-        controls(),
+        controls(floorplan_id),
         DivHStacked(
-            tools(),
+            tools() if mode=='edit' else floorplan_properties(),
             editor(floorplan_id, floorplan.width, floorplan.height, floorplan.data),
-            floorplan_properties(),
         ),
         cls="floorplan-editor",
         id="floorplan-editor-container",
@@ -167,9 +155,9 @@ def save_floorplan(floorplan_id: int, elements: str = "[]"):
         db_floorplan.updated_at = current_time
         floorplans.update(db_floorplan)
         
-        return Div("Floor plan saved successfully", cls="success-message", id='save-status', hx_swap_oob="true")
+        return Div("Grundriss erfolgreich gespeichert", cls="success-message", id='save-status', hx_swap="delete", hx_target='save-status', hx_trigger='every 20s')
     except Exception as e:
-        return Div(f"Error saving floor plan: {str(e)}", cls="error-message", id='save-status', hx_swap_oob="true")
+        return Div(f"Fehler beim Speichern des Grundrisses: {str(e)}", cls="error-message", id='save-status', hx_swap="delete", hx_target='save-status', hx_trigger='every 20s')
 
 # WebSocket handler for real-time collaboration
 @ar.ws('/ws/floorplan/{floorplan_id}')
@@ -177,7 +165,7 @@ async def floorplan_ws(msg: str, send, floorplan_id: int):
     # Broadcast changes to all clients
     try:
         update = json.loads(msg)
-        return Div(f"Element {update.get('id', 'unknown')} updated", id="update-message")
+        return Div(f"Element {update.get('id', 'unbekannt')} aktualisiert", id="update-message")
     except:
-        return Div("Invalid update received", id="update-message")
+        return Div("Ungültige Aktualisierung empfangen", id="update-message")
 

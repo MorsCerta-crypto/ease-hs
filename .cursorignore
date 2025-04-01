@@ -1,0 +1,11 @@
+data/
+.venv/
+.gitignore
+__pycache__/
+*.lock
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz

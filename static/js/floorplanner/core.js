@@ -79,39 +79,17 @@ function generateId() {
 } 
 
 
-// Save changes to the server
-function saveChanges() {
-    if (!currentState.floorplanId) return;
+
+// Delete selected element
+function deleteSelectedElement() {
+    if (!currentState.selectedElement) return;
     
-    // Get the form data
-    const formData = new FormData();
-    formData.append('elements', JSON.stringify(currentState.elements));
-    
-    // Send the data
-    fetch(`/save_floorplan/${currentState.floorplanId}`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'HX-Request': 'true'
-        }
-    })
-        .then(response => response.text())
-        .then(html => {
-            const saveStatus = document.getElementById('save-status');
-            if (saveStatus) {
-                saveStatus.innerHTML = html;
-                
-                // Clear the status after a few seconds
-                setTimeout(() => {
-                    saveStatus.innerHTML = '';
-                }, 3000);
-            }
-        })
-        .catch(error => {
-            console.error('Error saving floor plan:', error);
-            const saveStatus = document.getElementById('save-status');
-            if (saveStatus) {
-                saveStatus.innerHTML = '<div class="error-message">Error saving floor plan</div>';
-            }
-        });
+    const index = currentState.elements.findIndex(el => el.id === currentState.selectedElement.id);
+    if (index !== -1) {
+        currentState.elements.splice(index, 1);
+        currentState.selectedElement = null;
+        updatePropertiesPanel();
+        render(document.getElementById('floorplan-canvas'));
+        saveChanges();
+    }
 }
