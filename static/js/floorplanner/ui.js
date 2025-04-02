@@ -160,7 +160,26 @@ function setActiveTool(tool) {
 // Select an element
 function selectElement(element) {
     currentState.selectedElement = element;
-    updatePropertiesPanel();
+    
+    // Get the current mode from the session
+    const mode = document.querySelector('#floorplan-editor-container').dataset.mode;
+    
+    if (mode === 'select' && element) {
+        // In view mode, load properties from server
+        const propertiesPanel = document.getElementById('element-properties');
+        if (propertiesPanel) {
+            propertiesPanel.innerHTML = '<p>Lade Eigenschaften...</p>';
+            
+            // Make HTMX request to load properties
+            htmx.ajax('GET', `/floorplan_editor/${currentState.floorplanId}/element/${element.id}`, {
+                target: '#element-properties',
+                swap: 'innerHTML'
+            });
+        }
+    } else {
+        // In edit mode, update properties panel locally
+        updatePropertiesPanel();
+    }
 }
 
 // Update the properties panel with the selected element's data

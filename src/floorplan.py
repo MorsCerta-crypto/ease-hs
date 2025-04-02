@@ -3,7 +3,7 @@ from monsterui.all import *
 import json
 from pathlib import Path
 import datetime
-from src.db import floorplans
+from src.db import floorplans, element_properties
 
 # Initialize FastHTML ar with blue theme
 ar = APIRouter()
@@ -26,7 +26,7 @@ def create_floorplan():
 
 # Initialize a floor plan
 @ar.post("/initialize_floorplan")
-def initialize_floorplan(name: str, width: float, height: float):
+def initialize_floorplan(sess, name: str, width: float, height: float):
     current_time = datetime.datetime.now().isoformat()
     # Assuming user_id = 1 for now - in a real app, this would come from auth
     floorplan = floorplans.insert(
@@ -37,7 +37,8 @@ def initialize_floorplan(name: str, width: float, height: float):
         data="[]",
         created_at=current_time,
         updated_at=current_time)
-    return floorplan_editor(floorplan_id=floorplan.id)
+    sess['floorplan-mode'] = 'edit'
+    return floorplan_editor(sess, floorplan_id=floorplan.id)
 
 # Load existing floor plans
 @ar.get("/load_floorplan")
@@ -77,10 +78,12 @@ def floorplan_properties():
                 Div(id="element-properties", cls="properties-panel"),
                 cls=""),
             cls="")
+    
 def controls(floorplan_id:int):
     return DivHStacked(
             Button("Speichern", hx_post=f'/save_floorplan/{floorplan_id}', hx_target="#save-status", hx_vals="js:{elements: JSON.stringify(currentState.elements)}"),
             Button("Als PNG exportieren", id="export-png"),
+            Button("Modus ändern", cls="tool-btn", hx_get=f"/floorplan_editor/{floorplan_id}/change-mode", hx_target="#floorplan-editor-container"),
             Button("Zurück zur Startseite", hx_get='/', hx_target="#main-content"),
             Div(id="save-status"))
     
@@ -99,22 +102,59 @@ def tools():
                 Button("Maschine", cls="tool-btn", data_tool="machine", submit=False),
                 Button("Sicherheitsschrank", cls="tool-btn", data_tool="closet", submit=False),
                 Button("Löschen", id="delete-btn", onclick="deleteSelectedElement()", submit=False),
-                cls=""
-            )),
-            cls=""
-        )
+                cls="gap-2"
+            )))
     
-@ar.get("/floorplan_editor/change-mode")
-def change_mode(sess):
+@ar.get("/floorplan_editor/{floorplan_id}/change-mode")
+def change_mode(sess, floorplan_id: int):
     mode = sess['floorplan-mode']
     if mode == 'edit':
         sess['floorplan-mode'] = 'select'
     else:
         sess['floorplan-mode'] = 'edit'
-    return ""
+    return floorplan_editor(sess, floorplan_id=floorplan_id)
+
+@ar.get('/floorplan_editor/{floorplan_id}/element/{element_id}')
+def get_element_properties(floorplan_id: int, element_id: str):
+    try:
+        # Get element properties from database
+        props = element_properties.fetchone(
+            where='floorplan_id=? AND element_id=?',
+            where_args=(floorplan_id, element_id)
+        )
+        
+        if not props:
+            return Div("Element nicht gefunden", cls="error-message")
+            
+        return Div(
+            Card(
+                H4("Eigenschaften"),
+                Div(
+                    Form(
+                        LabelInput("Typ", name="element_type", value=props.element_type, readonly=True),
+                        LabelInput("Breite (m)", name="width", type="number", value=props.width, readonly=True),
+                        *[
+                            LabelInput(
+                                key.replace('_', ' ').title(),
+                                name=f"properties.{key}",
+                                value=value,
+                                readonly=True
+                            )
+                            for key, value in json.loads(props.properties).items()
+                        ],
+                        cls="element-props-form"
+                    ),
+                    cls="properties-panel"
+                ),
+                cls=""
+            ),
+            cls=""
+        )
+    except Exception as e:
+        return Div(f"Fehler beim Laden der Eigenschaften: {str(e)}", cls="error-message")
 
 @ar.get('/floorplan_editor/{floorplan_id}')
-def floorplan_editor(sess,floorplan_id: int):
+def floorplan_editor(sess, floorplan_id: int):
     # Load floor plan data from database
     if not 'floorplan-mode' in sess: sess['floorplan-mode'] = 'edit'
     mode = sess['floorplan-mode']
@@ -122,7 +162,6 @@ def floorplan_editor(sess,floorplan_id: int):
         floorplan = floorplans.fetchone(id=floorplan_id)
         if not floorplan:
             raise ValueError("Floorplan not found")
-        print(floorplan.data)
     except Exception as e:
         return Card(
             H3("Fehler"),
@@ -132,11 +171,12 @@ def floorplan_editor(sess,floorplan_id: int):
     return DivVStacked(
         controls(floorplan_id),
         DivHStacked(
-            tools() if mode=='edit' else floorplan_properties(),
+            tools() if mode=='edit' else Div(id="element-properties", cls="properties-panel"),
             editor(floorplan_id, floorplan.width, floorplan.height, floorplan.data),
         ),
         cls="floorplan-editor",
         id="floorplan-editor-container",
+        data_mode=mode
     )
 
 # Save floor plan
@@ -158,14 +198,4 @@ def save_floorplan(floorplan_id: int, elements: str = "[]"):
         return Div("Grundriss erfolgreich gespeichert", cls="success-message", id='save-status', hx_swap="delete", hx_target='save-status', hx_trigger='every 20s')
     except Exception as e:
         return Div(f"Fehler beim Speichern des Grundrisses: {str(e)}", cls="error-message", id='save-status', hx_swap="delete", hx_target='save-status', hx_trigger='every 20s')
-
-# WebSocket handler for real-time collaboration
-@ar.ws('/ws/floorplan/{floorplan_id}')
-async def floorplan_ws(msg: str, send, floorplan_id: int):
-    # Broadcast changes to all clients
-    try:
-        update = json.loads(msg)
-        return Div(f"Element {update.get('id', 'unbekannt')} aktualisiert", id="update-message")
-    except:
-        return Div("Ungültige Aktualisierung empfangen", id="update-message")
 

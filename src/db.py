@@ -1,63 +1,23 @@
 import json
 import sqlite3
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, Union
 from fasthtml.common import database
 
 # Initialize database
 db = database('data/floorplan.db')
-
-# Define tables for our application
-users = db.t.users
-floorplans = db.t.floorplans
-documents = db.t.documents
-
-# Create tables if they don't exist
-if users not in db.t:
-    users.create(
-        username=str,
-        email=str,
-        password_hash=str,
-        company_name=str,
-        created_at=str,
-        pk='id'
-    )
-
-if floorplans not in db.t:
-    floorplans.create(
-        user_id=int,
-        name=str,
-        width=float,
-        height=float,
-        data=str, # JSON string with elements
-        created_at=str,
-        updated_at=str,
-        pk='id'
-    )
-
-if documents not in db.t:
-    documents.create(
-        floorplan_id=int,
-        element_id=str,
-        filename=str,
-        s3_key=str,
-        upload_date=str,
-        pk='id'
-    )
-
-# Define dataclasses for type hints and structure
+modify = True
 @dataclass
-class UserDB:
-    id: int
+class User:
     username: str
     email: str
     password_hash: str
     company_name: Optional[str] = None
     created_at: Optional[str] = None
+    id: int = None
 
 @dataclass
-class FloorPlanDB:
-    id: int
+class FloorPlan:
     user_id: int
     name: str
     width: float
@@ -65,17 +25,35 @@ class FloorPlanDB:
     data: Union[str, Dict[str, Any]]  # Can be JSON string or dict
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+    id: int = None
 
 @dataclass
-class DocumentDB:
-    id: int
+class Document:
     floorplan_id: int
     element_id: str
     filename: str
     s3_key: str
     upload_date: Optional[str] = None
+    id: int = None
 
-# Set dataclasses for tables
-User = users.dataclass()
-FloorPlan = floorplans.dataclass()
-Document = documents.dataclass()
+@dataclass
+class ElementProperty:
+    floorplan_id: int
+    element_id: str
+    element_type: str
+    width: float
+    properties: Union[str, Dict[str, Any]]  # Can be JSON string or dict
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    id: int = None
+
+
+# Create tables if they don't exist
+users = db.t.users
+if users not in db.t or modify: users = db.create(User,name='users',pk='id',transform=True)
+floorplans = db.t.floorplans
+if floorplans not in db.t or modify: floorplans = db.create(FloorPlan,name='floorplans',pk='id',transform=True)
+documents = db.t.documents
+if documents not in db.t or modify: documents = db.create(Document,name='documents',pk='id',transform=True)
+element_properties = db.t.element_properties
+if element_properties not in db.t or modify: element_properties = db.create(ElementProperty,name='element_properties',pk='id',transform=True)
