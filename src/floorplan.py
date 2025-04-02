@@ -57,9 +57,9 @@ def load_floorplan(sess, req):
 def tools_panel():
     return  Div(Card(H4("Werkzeuge"),
                             DivVStacked(Div(Strong("Modus:"),
-                                    Div(Radio("editMode", "mode", "edit", checked=True),
+                                    Div(Radio("editMode", name="mode", value="edit", checked=True),
                                         Label("Bearbeiten", for_="editMode"),
-                                        Radio("viewMode", "mode", "view"),
+                                        Radio("viewMode", name="mode", value="view"),
                                         Label("Ansicht", for_="viewMode"),
                                         cls="mode-switch"),cls="mb-4"),
                                 Hr(),

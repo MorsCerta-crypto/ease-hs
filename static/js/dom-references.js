@@ -3,7 +3,7 @@ import * as state from './state.js'; // Import state statically
 
 // Instead of querying at module load:
 
-const canvas = getCanvas();
+const canvas = document.getElementById('floorPlanCanvas');
 const ctx = canvas?.getContext('2d');
 const controls = document.getElementById('controls');
 const saveBtn = document.getElementById('saveBtn');
@@ -15,16 +15,13 @@ const selectBtn = document.getElementById('selectBtn');
 const deleteBtn = document.getElementById('deleteBtn');
 // Add other button references if needed directly
 
-// Create getter functions:
-export function getCanvas() {
-    return document.getElementById('floorPlanCanvas');
-}
 
 // Update checkDOMReady:
 export function checkDOMReady() {
     
     if (!canvas || !ctx || !controls || !saveBtn || !scaleInfo || !gridInfo || !statusInfo || modeRadios.length === 0 || !selectBtn || !deleteBtn) {
         console.error("Initialization failed: Missing required HTML elements.");
+        console.log(`missing: ${!canvas ? 'canvas' : ''}${!ctx ? 'ctx' : ''}${!controls ? 'controls' : ''}${!saveBtn ? 'saveBtn' : ''}${!scaleInfo ? 'scaleInfo' : ''}${!gridInfo ? 'gridInfo' : ''}${!statusInfo ? 'statusInfo' : ''}${modeRadios.length === 0 ? 'modeRadios' : ''}${!selectBtn ? 'selectBtn' : ''}${!deleteBtn ? 'deleteBtn' : ''}s`)
         return false;
     }
     return true;
