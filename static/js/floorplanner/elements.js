@@ -4,8 +4,8 @@ function getCanvasMousePosition(event, canvas) {
     const x = (event.clientX - rect.left - currentState.panOffset.x) / currentState.scale;
     const y = (event.clientY - rect.top - currentState.panOffset.y) / currentState.scale;
     
-    // Snap to grid if not in select mode
-    if (currentState.currentTool !== 'select') {
+    // Only snap to grid for walls
+    if (currentState.currentTool === 'wall') {
         return {
             x: Math.round(x / currentState.gridSize) * currentState.gridSize,
             y: Math.round(y / currentState.gridSize) * currentState.gridSize
@@ -118,6 +118,16 @@ function finishDrawing(endPoint) {
         return;
     }
     
+    // Check if door or window is being placed on a wall
+    if (['door-standard', 'door-emergency', 'window'].includes(currentState.currentTool)) {
+        const wall = findWallAtPosition(currentState.startPoint);
+        if (!wall) {
+            alert('Türen und Fenster können nur auf Wänden platziert werden.');
+            currentState.startPoint = null;
+            return;
+        }
+    }
+    
     // Create the new element
     const newElement = {
         id: generateId(),
@@ -133,7 +143,8 @@ function finishDrawing(endPoint) {
         newElement.width = 1.0; // Default 1 meter width for emergency routes
         newElement.properties = {
             routeName: 'Emergency Exit Route',
-            exitPoint: 'end' // Default exit point is at the end
+            exitPoint: 'end', // Default exit point is at the end
+            points: [{ ...currentState.startPoint }, { ...endPoint }] // Initialize with start and end points
         };
     } 
     // Add default properties based on element type
@@ -157,10 +168,66 @@ function finishDrawing(endPoint) {
     selectElement(newElement);
     
     // Save changes
-    // saveChanges();
+    saveChanges();
     
     // Reset drawing state
     currentState.startPoint = null;
+}
+
+// Find a wall at the given position
+function findWallAtPosition(pos) {
+    const hitDistance = 0.2; // 20cm hit distance for wall detection
+    
+    for (const element of currentState.elements) {
+        if (element.element_type === 'wall') {
+            // Calculate distance from point to line segment
+            const distance = distanceToLineSegment(
+                pos,
+                element.start,
+                element.end
+            );
+            
+            if (distance < hitDistance) {
+                return element;
+            }
+        }
+    }
+    
+    return null;
+}
+
+// Calculate distance from point to line segment
+function distanceToLineSegment(point, lineStart, lineEnd) {
+    const dx = lineEnd.x - lineStart.x;
+    const dy = lineEnd.y - lineStart.y;
+    
+    // Calculate the projection of point onto the line
+    const t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / (dx * dx + dy * dy);
+    
+    // If t < 0, closest point is lineStart
+    if (t < 0) {
+        return Math.sqrt(
+            Math.pow(point.x - lineStart.x, 2) + 
+            Math.pow(point.y - lineStart.y, 2)
+        );
+    }
+    
+    // If t > 1, closest point is lineEnd
+    if (t > 1) {
+        return Math.sqrt(
+            Math.pow(point.x - lineEnd.x, 2) + 
+            Math.pow(point.y - lineEnd.y, 2)
+        );
+    }
+    
+    // Closest point is on the line segment
+    const projectionX = lineStart.x + t * dx;
+    const projectionY = lineStart.y + t * dy;
+    
+    return Math.sqrt(
+        Math.pow(point.x - projectionX, 2) + 
+        Math.pow(point.y - projectionY, 2)
+    );
 }
 
 // Check if mouse is over a resize handle
@@ -219,7 +286,7 @@ function resizeSelectedElement(pos) {
     const handle = currentState.resizeHandle;
     
     // For line-type elements (walls, doors, windows, emergency routes)
-    if (['wall', 'door-standard', 'door-emergency', 'window', 'emergency-route'].includes(element.element_type)) {
+    if (['wall', 'door-standard', 'door-emergency', 'window'].includes(element.element_type)) {
         // Resize from either end
         if (handle === 'start') {
             element.start.x = pos.x;
@@ -229,37 +296,33 @@ function resizeSelectedElement(pos) {
             element.end.y = pos.y;
         }
     } 
+    // For emergency routes with multiple points
+    else if (element.element_type === 'emergency-route') {
+        if (handle === 'start') {
+            element.properties.points[0] = { ...pos };
+            element.start = { ...pos };
+        } else if (handle === 'end') {
+            element.properties.points[element.properties.points.length - 1] = { ...pos };
+            element.end = { ...pos };
+        }
+    }
     // For rectangle-type elements (machines, closets)
     else if (['machine', 'closet'].includes(element.element_type)) {
-        // Get current dimensions
-        const minX = Math.min(element.start.x, element.end.x);
-        const maxX = Math.max(element.start.x, element.end.x);
-        const minY = Math.min(element.start.y, element.end.y);
-        const maxY = Math.max(element.start.y, element.end.y);
-        
-        // Resize based on which corner is being dragged
+        // Update the appropriate corner based on the handle
         switch (handle) {
             case 'top-left':
                 element.start.x = pos.x;
                 element.start.y = pos.y;
-                element.end.x = maxX;
-                element.end.y = maxY;
                 break;
             case 'top-right':
-                element.start.x = minX;
-                element.start.y = pos.y;
                 element.end.x = pos.x;
-                element.end.y = maxY;
+                element.start.y = pos.y;
                 break;
             case 'bottom-left':
                 element.start.x = pos.x;
-                element.start.y = minY;
-                element.end.x = maxX;
                 element.end.y = pos.y;
                 break;
             case 'bottom-right':
-                element.start.x = minX;
-                element.start.y = minY;
                 element.end.x = pos.x;
                 element.end.y = pos.y;
                 break;
@@ -270,5 +333,63 @@ function resizeSelectedElement(pos) {
     updatePropertiesPanel();
     
     // Save changes
-    // saveChanges();
+    saveChanges();
+}
+
+// Delete the selected element
+window.deleteSelectedElement = function() {
+    if (!currentState.selectedElement) return;
+    
+    const index = currentState.elements.findIndex(e => e.id === currentState.selectedElement.id);
+    if (index !== -1) {
+        currentState.elements.splice(index, 1);
+        currentState.selectedElement = null;
+        
+        // Update properties panel
+        updatePropertiesPanel();
+        
+        // Render the updated state
+        const canvas = document.getElementById('floorplan-canvas');
+        if (canvas) render(canvas);
+        
+        // Save changes
+        saveChanges();
+    }
+};
+
+// Add point to emergency route
+function addPointToEmergencyRoute(pos) {
+    if (!currentState.selectedElement || currentState.selectedElement.element_type !== 'emergency-route') return;
+    
+    const element = currentState.selectedElement;
+    element.properties.points.push({ ...pos });
+    element.end = { ...pos };
+    
+    // Update the properties panel
+    updatePropertiesPanel();
+    
+    // Save changes
+    saveChanges();
+}
+
+// Remove point from emergency route
+function removePointFromEmergencyRoute(index) {
+    if (!currentState.selectedElement || currentState.selectedElement.element_type !== 'emergency-route') return;
+    
+    const element = currentState.selectedElement;
+    if (index === 0) {
+        element.properties.points.shift();
+        element.start = { ...element.properties.points[0] };
+    } else if (index === element.properties.points.length - 1) {
+        element.properties.points.pop();
+        element.end = { ...element.properties.points[element.properties.points.length - 1] };
+    } else {
+        element.properties.points.splice(index, 1);
+    }
+    
+    // Update the properties panel
+    updatePropertiesPanel();
+    
+    // Save changes
+    saveChanges();
 } 

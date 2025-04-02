@@ -71,6 +71,12 @@ function setupCanvasEvents(canvas) {
         } else if (currentState.isDrawing && currentState.startPoint) {
             const pos = getCanvasMousePosition(e, canvas);
             finishDrawing(pos);
+        } else if (currentState.selectedElement && currentState.selectedElement.element_type === 'emergency-route') {
+            // Add point to emergency route on double click
+            if (e.detail === 2) {
+                const pos = getCanvasMousePosition(e, canvas);
+                addPointToEmergencyRoute(pos);
+            }
         }
         
         currentState.isDrawing = false;
@@ -83,6 +89,13 @@ function setupCanvasEvents(canvas) {
         currentState.isResizing = false;
         render(canvas);
     });
+
+    // Key down event - handle delete key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            deleteSelectedElement();
+        }
+    });
 }
 
 // Set up tool buttons
@@ -91,10 +104,18 @@ function setupToolButtons() {
     
     toolButtons.forEach(button => {
         button.addEventListener('click', () => {
-            const tool = button.dataset.tool;
-            setActiveTool(tool);
+            setActiveTool(button.dataset.tool);
         });
     });
+    
+    // Set up delete button
+    const deleteButton = document.getElementById('delete-btn');
+    if (deleteButton) {
+        deleteButton.addEventListener('click', () => {
+            setActiveTool('select');
+            deleteSelectedElement();
+        });
+    }
 }
 
 // Set up export button

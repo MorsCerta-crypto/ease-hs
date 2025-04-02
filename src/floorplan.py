@@ -99,6 +99,7 @@ def tools():
                 Button("Tür (Notausgang)", cls="tool-btn", data_tool="door-emergency", submit=False),
                 Button("Fenster", cls="tool-btn", data_tool="window", submit=False),
                 Button("Fluchtweg", cls="tool-btn", data_tool="emergency-route", submit=False),
+                Button("Erste-Hilfe-Kasten", cls="tool-btn", data_tool="emergency-kit", submit=False),
                 Button("Maschine", cls="tool-btn", data_tool="machine", submit=False),
                 Button("Sicherheitsschrank", cls="tool-btn", data_tool="closet", submit=False),
                 Button("Löschen", id="delete-btn", onclick="deleteSelectedElement()", submit=False),

@@ -142,18 +142,43 @@ function drawElement(ctx, element) {
             break;
             
         case 'emergency-route':
-            ctx.strokeStyle = '#28a745'; // Green for emergency routes
+            ctx.strokeStyle = 'rgba(40, 167, 69, 0.5)'; // Semi-transparent green for emergency routes
             ctx.lineWidth = (element.width || 1) * currentState.scale; // Default to 1m width
             ctx.lineCap = 'round';
             
-            // Draw emergency route line
+            // Draw emergency route path
             ctx.beginPath();
-            ctx.moveTo(start.x, start.y);
-            ctx.lineTo(end.x, end.y);
+            const points = element.properties.points || [element.start, element.end];
+            
+            // Move to first point
+            const firstPoint = {
+                x: points[0].x * currentState.scale + currentState.panOffset.x,
+                y: points[0].y * currentState.scale + currentState.panOffset.y
+            };
+            ctx.moveTo(firstPoint.x, firstPoint.y);
+            
+            // Draw lines to each subsequent point
+            for (let i = 1; i < points.length; i++) {
+                const point = {
+                    x: points[i].x * currentState.scale + currentState.panOffset.x,
+                    y: points[i].y * currentState.scale + currentState.panOffset.y
+                };
+                ctx.lineTo(point.x, point.y);
+            }
             ctx.stroke();
             
             // Draw arrow heads to indicate direction
-            drawRouteArrows(ctx, start, end);
+            for (let i = 0; i < points.length - 1; i++) {
+                const start = {
+                    x: points[i].x * currentState.scale + currentState.panOffset.x,
+                    y: points[i].y * currentState.scale + currentState.panOffset.y
+                };
+                const end = {
+                    x: points[i + 1].x * currentState.scale + currentState.panOffset.x,
+                    y: points[i + 1].y * currentState.scale + currentState.panOffset.y
+                };
+                drawRouteArrows(ctx, start, end);
+            }
             break;
             
         case 'machine':
@@ -196,6 +221,33 @@ function drawElement(ctx, element) {
                 x: closetX + closetWidth / 2,
                 y: closetY + closetHeight / 2
             }, Math.min(closetWidth, closetHeight) * 0.6);
+            break;
+            
+        case 'emergency-kit':
+            ctx.fillStyle = 'rgba(220, 53, 69, 0.8)'; // Semi-transparent red
+            ctx.strokeStyle = '#dc3545';
+            ctx.lineWidth = 1;
+            
+            // Draw emergency kit as a circle with cross
+            const radius = 0.5 * currentState.scale; // 0.5 meter radius
+            const centerX = (start.x + end.x) / 2;
+            const centerY = (start.y + end.y) / 2;
+            
+            // Draw circle
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Draw cross
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX - radius * 0.7, centerY);
+            ctx.lineTo(centerX + radius * 0.7, centerY);
+            ctx.moveTo(centerX, centerY - radius * 0.7);
+            ctx.lineTo(centerX, centerY + radius * 0.7);
+            ctx.stroke();
             break;
     }
     
@@ -392,7 +444,7 @@ function drawSelectionBox(ctx, element) {
     };
     
     // Draw selection based on element type
-    if (['wall', 'door-standard', 'door-emergency', 'window', 'emergency-route'].includes(element.element_type)) {
+    if (['wall', 'door-standard', 'door-emergency', 'window'].includes(element.element_type)) {
         // Line type elements - draw selection points at start and end
         ctx.fillStyle = '#007bff';
         ctx.strokeStyle = '#007bff';
@@ -418,37 +470,53 @@ function drawSelectionBox(ctx, element) {
         ctx.beginPath();
         ctx.arc(end.x, end.y, pointRadius, 0, Math.PI * 2);
         ctx.fill();
+    } else if (element.element_type === 'emergency-route') {
+        // Emergency route with multiple points
+        const points = element.properties.points || [element.start, element.end];
         
-        // Show dimensions for the element
-        const lengthMeters = Math.sqrt(
-            Math.pow(element.end.x - element.start.x, 2) + 
-            Math.pow(element.end.y - element.start.y, 2)
-        );
+        // Draw path highlight
+        ctx.strokeStyle = '#007bff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
         
-        // Position for length display - middle of the line, slightly offset
-        const midX = (start.x + end.x) / 2;
-        const midY = (start.y + end.y) / 2;
+        // Move to first point
+        const firstPoint = {
+            x: points[0].x * currentState.scale + currentState.panOffset.x,
+            y: points[0].y * currentState.scale + currentState.panOffset.y
+        };
+        ctx.moveTo(firstPoint.x, firstPoint.y);
         
-        // Calculate perpendicular direction for offset
-        const dirX = (end.x - start.x) / (Math.max(1, Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2))));
-        const dirY = (end.y - start.y) / (Math.max(1, Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2))));
-        const perpX = -dirY;
-        const perpY = dirX;
+        // Draw lines to each subsequent point
+        for (let i = 1; i < points.length; i++) {
+            const point = {
+                x: points[i].x * currentState.scale + currentState.panOffset.x,
+                y: points[i].y * currentState.scale + currentState.panOffset.y
+            };
+            ctx.lineTo(point.x, point.y);
+        }
+        ctx.stroke();
         
-        // Offset the text from the line
-        const textX = midX + perpX * 15;
-        const textY = midY + perpY * 15;
-        
-        // Draw dimension text
-        ctx.font = '12px Arial';
-        ctx.fillStyle = '#000';
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 3;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const lengthText = `${lengthMeters.toFixed(2)} m`;
-        ctx.strokeText(lengthText, textX, textY);
-        ctx.fillText(lengthText, textX, textY);
+        // Draw control points at each point
+        const pointRadius = 5;
+        points.forEach((point, index) => {
+            const canvasPoint = {
+                x: point.x * currentState.scale + currentState.panOffset.x,
+                y: point.y * currentState.scale + currentState.panOffset.y
+            };
+            
+            // Different colors for start, end, and middle points
+            if (index === 0) {
+                ctx.fillStyle = '#ff9800'; // Start point
+            } else if (index === points.length - 1) {
+                ctx.fillStyle = '#28a745'; // End point
+            } else {
+                ctx.fillStyle = '#007bff'; // Middle points
+            }
+            
+            ctx.beginPath();
+            ctx.arc(canvasPoint.x, canvasPoint.y, pointRadius, 0, Math.PI * 2);
+            ctx.fill();
+        });
     } else {
         // Rectangle type elements (machines, closets)
         const width = Math.abs(end.x - start.x);

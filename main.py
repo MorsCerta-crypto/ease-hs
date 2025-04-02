@@ -4,7 +4,7 @@ from pathlib import Path
 from src.floorplan import create_floorplan, load_floorplan, ar
 
 # Initialize FastHTML app with blue theme
-app, rt = fast_app(
+app, rt = fast_app(live=True,
     hdrs=(
         Theme.blue.headers(),
         Link(rel="stylesheet", href="/static/css/floorplanner.css"),
@@ -48,4 +48,4 @@ def index():
         )
     )
 
-serve()
+serve(reload=True)
