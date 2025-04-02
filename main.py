@@ -9,10 +9,7 @@ app, rt = fast_app(live=True,
         Theme.blue.headers(),
         Link(rel="stylesheet", href="/static/css/floorplanner.css"),
         # Import JavaScript modules in the correct order
-        Script(src="/static/js/floorplanner/core.js"),
-        Script(src="/static/js/floorplanner/elements.js"),
-        Script(src="/static/js/floorplanner/ui.js"),
-        Script(src="/static/js/floorplanner/render.js"),
+        Script(src="/static/js/main.js", type="module"),
     ),
     # static_path="static"
 )
