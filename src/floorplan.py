@@ -3,7 +3,7 @@ from monsterui.all import *
 import json
 from pathlib import Path
 import datetime
-from src.db import floorplans, element_properties
+from src.db import floorplans, elements
 
 # Initialize FastHTML ar with blue theme
 ar = APIRouter()
@@ -53,7 +53,7 @@ def initialize_floorplan(sess, name: str, width: float, height: float):
         updated_at=current_time)
     
     # Redirect to the edit page
-    return RedirectResponse(f"/edit-floorplan/{floorplan.id}")
+    return Redirect(f"/edit-floorplan/{floorplan.id}")
 
 # Load existing floor plans
 
@@ -84,7 +84,7 @@ def controls(floorplan_id:int):
     return DivHStacked(
             Button("Speichern", hx_post=f'/save_floorplan/{floorplan_id}', hx_target="#save-status", hx_vals="js:{elements: JSON.stringify(currentState.elements)}"),
             Button("Als PNG exportieren", id="export-png"),
-            Button("Zurück zur Startseite", hx_get='/', hx_target="#main-content"),
+            A("Zurück zur Startseite", href='/', hx_target="#main-content"),
             Div(id="save-status"))
     
     
@@ -111,32 +111,33 @@ def tools():
 def get_element_properties(floorplan_id: int, element_id: str):
     try:
         # Get element properties from database
-        props = element_properties.fetchone(
+        props = elements.fetchone(
             where='floorplan_id=? AND element_id=?',
             where_args=(floorplan_id, element_id)
         )
         
         if not props:
             return Div("Element nicht gefunden", cls="error-message")
-            
+        
+        special_types = ["machine", "closet", "emergency-kit"]
+        safety_link = ""
+        if props.element_type in special_types:
+            safety_link = DivVStacked(
+                A("Sicherheitsdaten bearbeiten", 
+                  href=f"/element/{floorplan_id}/{element_id}/safety",
+                  cls="uk-button uk-button-primary uk-margin-small-top"),
+                cls="mt-3"
+            )
+        
         return Div(
             Card(
                 H4("Eigenschaften"),
                 Div(
                     Form(
                         LabelInput("Typ", name="element_type", value=props.element_type, readonly=True),
-                        LabelInput("Breite (m)", name="width", type="number", value=props.width, readonly=True),
-                        *[
-                            LabelInput(
-                                key.replace('_', ' ').title(),
-                                name=f"properties.{key}",
-                                value=value,
-                                readonly=True
-                            )
-                            for key, value in json.loads(props.properties).items()
-                        ],
                         cls="element-props-form"
                     ),
+                    safety_link,
                     cls="properties-panel"
                 ),
                 cls=""
@@ -144,6 +145,7 @@ def get_element_properties(floorplan_id: int, element_id: str):
             cls=""
         )
     except Exception as e:
+        print(f"Exception: {e}, type: {type(e)}")
         return Div(f"Fehler beim Laden der Eigenschaften: {str(e)}", cls="error-message")
 
 
@@ -153,19 +155,61 @@ def save_floorplan(floorplan_id: int, elements: str = "[]"):
     try:
         # Get the current floorplan
         print(f'saving floorplan {floorplan_id} with elements: {elements}')
-        db_floorplan = floorplans.fetchone(id=floorplan_id)
+        db_floorplan = floorplans(where='id=?', where_args=(floorplan_id,))
         if not db_floorplan:
             raise ValueError("Floorplan not found")
-        
+        else: db_floorplan = db_floorplan[0]
         # Update elements and timestamp
         current_time = datetime.datetime.now().isoformat()
         db_floorplan.data = elements
         db_floorplan.updated_at = current_time
         floorplans.update(db_floorplan)
+        print(f'floorplan {floorplan_id} updated')
+        # Process special elements (machine, closet, emergency-kit)
+        save_special_elements(floorplan_id, json.loads(elements), current_time)
         
         return Div("Grundriss erfolgreich gespeichert", cls="success-message", id='save-status', hx_swap="delete", hx_target='save-status', hx_trigger='every 20s')
     except Exception as e:
         return Div(f"Fehler beim Speichern des Grundrisses: {str(e)}", cls="error-message", id='save-status', hx_swap="delete", hx_target='save-status', hx_trigger='every 20s')
+
+def save_special_elements(floorplan_id, elements_data, timestamp):
+    # Types that require special safety handling
+    special_types = ["machine", "closet", "emergency-kit"]
+    
+    for element in elements_data:
+        if element.get("element_type") in special_types:
+            element_id = element.get("id")
+            element_type = element.get("element_type")
+            
+            # Check if element already exists in the elements table
+            existing = elements(
+                where="floorplan_id=? AND element_id=?",
+                where_args=(floorplan_id, element_id)
+            )
+            
+            if existing:
+                # Element exists, just update the timestamp
+                existing = existing[0]
+                print(f"Updating existing element: {element_id}, {element_type}")
+                existing.updated_at = timestamp
+                elements.update(existing)
+            else:
+                # Create new element with default values
+                print(f"Creating new element: {element_id}, {element_type}")
+                elements.insert(
+                    floorplan_id=floorplan_id,
+                    element_id=element_id,
+                    element_type=element_type,
+                    name=f"New {element_type.title()}",
+                    description="",
+                    dangers="",
+                    safety_instructions="",
+                    trained_employees="[]",
+                    maintenance_schedule="",
+                    last_maintenance=None,
+                    created_at=timestamp,
+                    updated_at=timestamp
+                )
 
 @ar.get("/edit-floorplan/{floorplan_id}")
 def edit_floorplan_page(sess, floorplan_id: int):
@@ -234,12 +278,10 @@ def show_floorplan_page(floorplan_id: int):
                 )
             )
         )
-    
+    print(floorplan.height)
     return Main(
         Head(
             Title(f"Grundriss anzeigen: {floorplan.name}"),
-            Script(src="/static/js/floorplanner/core.js"),
-            Script(src="/static/js/floorplanner/elements.js"),
             Script(src="/static/js/floorplanner/show.js")
         ),
         Body(
@@ -253,7 +295,11 @@ def show_floorplan_page(floorplan_id: int):
                         H3(f"Grundriss: {floorplan.name}"),
                         cls="view-header"
                     ),
-                    editor(floorplan_id, floorplan.width, floorplan.height, floorplan.data),
+                    DivHStacked(
+                        editor(floorplan_id, floorplan.width, floorplan.height, floorplan.data),
+                        floorplan_properties(), 
+                        cls="uk-grid uk-child-width-expand"
+                    ),
                     cls="floorplan-viewer",
                     id="floorplan-viewer-container"
                 ),
@@ -261,4 +307,101 @@ def show_floorplan_page(floorplan_id: int):
             )
         )
     )
+
+@ar.get('/floorplan_editor/{floorplan_id}/elements')
+def get_floorplan_elements(floorplan_id: int):
+    try:
+        # Get the floorplan from database
+        db_floorplan = floorplans.fetchone(id=floorplan_id)
+        if not db_floorplan:
+            return {"error": "Floorplan not found"}, 404
+        
+        # Parse and return the elements
+        return db_floorplan.data
+    except Exception as e:
+        return {"error": f"Error loading elements: {str(e)}"}, 500
+
+@ar.get('/element/{floorplan_id}/{element_id}/safety')
+def element_safety_form(floorplan_id: int, element_id: str):
+    try:
+        # Get the element from database
+        element = elements.fetchone(
+            where="floorplan_id=? AND element_id=?",
+            where_args=(floorplan_id, element_id)
+        )
+        
+        if not element:
+            return Div("Element nicht gefunden", cls="error-message")
+        
+        return Main(
+            Head(
+                Title(f"Sicherheitsdaten für {element.name}")
+            ),
+            Body(
+                NavBar(
+                    H3("Safety Floor Planner"),
+                    A("Zurück zur Übersicht", href="/", cls="uk-button uk-button-default"),
+                    A("Zurück zum Grundriss", href=f"/edit-floorplan/{floorplan_id}", cls="uk-button uk-button-primary")
+                ),
+                Container(
+                    Card(
+                        CardHeader(H3(f"Sicherheitsdaten für {element.name}")),
+                        CardBody(
+                            Form(
+                                LabelInput("Name", name="name", value=element.name, required=True),
+                                LabelInput("Typ", name="element_type", value=element.element_type, readonly=True),
+                                LabelTextArea("Beschreibung", name="description", value=element.description),
+                                LabelTextArea("Gefahren", name="dangers", value=element.dangers),
+                                LabelTextArea("Sicherheitshinweise", name="safety_instructions", value=element.safety_instructions),
+                                LabelInput("Geschulte Mitarbeiter (Namen, durch Komma getrennt)", name="trained_employees", 
+                                           value=", ".join(json.loads(element.trained_employees)) if element.trained_employees else ""),
+                                LabelInput("Wartungsplan", name="maintenance_schedule", value=element.maintenance_schedule),
+                                LabelInput("Letzte Wartung", name="last_maintenance", type="date", 
+                                           value=element.last_maintenance.split("T")[0] if element.last_maintenance else ""),
+                                Button("Speichern", type="submit", cls="uk-button uk-button-primary"),
+                                hx_post=f"/element/{floorplan_id}/{element_id}/safety/save",
+                            )
+                        )
+                    ),
+                    cls=("mt-5", "uk-container-xl")
+                )
+            )
+        )
+    except Exception as e:
+        return Div(f"Fehler beim Laden der Sicherheitsdaten: {str(e)}", cls="error-message")
+
+@ar.post('/element/{floorplan_id}/{element_id}/safety/save')
+def save_element_safety(floorplan_id: int, element_id: str, name: str, description: str, dangers: str, 
+                         safety_instructions: str, trained_employees: str, maintenance_schedule: str, 
+                         last_maintenance: str = None):
+    try:
+        # Get the element
+        element = elements.fetchone(
+            where="floorplan_id=? AND element_id=?",
+            where_args=(floorplan_id, element_id)
+        )
+        
+        if not element:
+            return Div("Element nicht gefunden", cls="error-message")
+        
+        # Format employees as JSON list
+        employees_list = [emp.strip() for emp in trained_employees.split(',') if emp.strip()]
+        
+        # Update element
+        element.name = name
+        element.description = description
+        element.dangers = dangers
+        element.safety_instructions = safety_instructions
+        element.trained_employees = json.dumps(employees_list)
+        element.maintenance_schedule = maintenance_schedule
+        
+        if last_maintenance:
+            element.last_maintenance = f"{last_maintenance}T00:00:00"
+            
+        element.updated_at = datetime.datetime.now().isoformat()
+        elements.update(element)
+        
+        return Redirect(f"/show-floorplan/{floorplan_id}")
+    except Exception as e:
+        return Div(f"Fehler beim Speichern der Sicherheitsdaten: {str(e)}", cls="error-message")
 

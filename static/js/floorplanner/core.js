@@ -65,14 +65,9 @@ function initFloorPlanEditor() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize immediately if canvas already exists
-    if (document.getElementById('floorplan-canvas')) {
-        initFloorPlanEditor();
-    }
-    
-    // Initialize the editor when the floorplan canvas is loaded via HTMX
+    // Initialize the editor when the floorplan canvas is loaded
     document.body.addEventListener('htmx:afterSwap', (event) => {
-        if ((event.detail.target.id === 'main-content' || event.detail.target.id === 'floorplan-editor-container') && 
+        if (event.detail.target.id === 'main-content' && 
             document.getElementById('floorplan-canvas')) {
             initFloorPlanEditor();
         }

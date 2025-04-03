@@ -347,7 +347,6 @@ window.deleteSelectedElement = function() {
         const canvas = document.getElementById('floorplan-canvas');
         if (canvas) render(canvas);
         
-    }
 };
 
 // Add point to emergency route
