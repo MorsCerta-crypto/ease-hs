@@ -99,8 +99,6 @@ function dragSelectedElement(pos) {
     element.end.x += deltaX;
     element.end.y += deltaY;
     
-    // Update the properties panel
-    updatePropertiesPanel();
 }
 
 // Finish drawing a new element
@@ -326,8 +324,6 @@ function resizeSelectedElement(pos) {
         }
     }
     
-    // Update the properties panel
-    updatePropertiesPanel();
     
 }
 
@@ -340,43 +336,9 @@ window.deleteSelectedElement = function() {
         currentState.elements.splice(index, 1);
         currentState.selectedElement = null;
         
-        // Update properties panel
-        updatePropertiesPanel();
         
         // Render the updated state
         const canvas = document.getElementById('floorplan-canvas');
         if (canvas) render(canvas);
-        
-};
-
-// Add point to emergency route
-function addPointToEmergencyRoute(pos) {
-    if (!currentState.selectedElement || currentState.selectedElement.element_type !== 'emergency-route') return;
-    
-    const element = currentState.selectedElement;
-    element.properties.points.push({ ...pos });
-    element.end = { ...pos };
-    
-    // Update the properties panel
-    updatePropertiesPanel();
-    
-}
-
-// Remove point from emergency route
-function removePointFromEmergencyRoute(index) {
-    if (!currentState.selectedElement || currentState.selectedElement.element_type !== 'emergency-route') return;
-    
-    const element = currentState.selectedElement;
-    if (index === 0) {
-        element.properties.points.shift();
-        element.start = { ...element.properties.points[0] };
-    } else if (index === element.properties.points.length - 1) {
-        element.properties.points.pop();
-        element.end = { ...element.properties.points[element.properties.points.length - 1] };
-    } else {
-        element.properties.points.splice(index, 1);
     }
-    
-    // Update the properties panel
-    updatePropertiesPanel();
-} 
+}

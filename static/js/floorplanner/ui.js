@@ -188,11 +188,31 @@ window.deleteSelectedElement = function() {
         currentState.elements.splice(index, 1);
         currentState.selectedElement = null;
         
-        // Update properties panel
-        updatePropertiesPanel();
         
         // Render the updated state
         const canvas = document.getElementById('floorplan-canvas');
         if (canvas) render(canvas);
     }
-}; 
+};
+
+// Select an element
+function selectElement(element) {
+    // Update the current state to track the newly selected element
+    currentState.selectedElement = element;
+    
+    // Clear resizing and drawing states
+    currentState.isResizing = true;
+    currentState.isDrawing = false;
+    currentState.resizeHandle = null;
+    
+    
+    // Update UI to show the element is selected
+    const canvas = document.getElementById('floorplan-canvas');
+    if (canvas) {
+        if (element) {
+            canvas.style.cursor = 'move';
+        } else {
+            canvas.style.cursor = currentState.currentTool === 'select' ? 'default' : 'crosshair';
+        }
+    }
+} 

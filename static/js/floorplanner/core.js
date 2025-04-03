@@ -89,7 +89,6 @@ function deleteSelectedElement() {
     if (index !== -1) {
         currentState.elements.splice(index, 1);
         currentState.selectedElement = null;
-        updatePropertiesPanel();
         render(document.getElementById('floorplan-canvas'));
     }
 }

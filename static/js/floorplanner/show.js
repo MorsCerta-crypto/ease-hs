@@ -91,8 +91,6 @@ function fetchElementsFromAPI() {
     });
 }
 
-
-
 // Set up event listeners for the canvas
 function setupEventListeners() {
   const canvas = currentState.canvas;
@@ -100,6 +98,17 @@ function setupEventListeners() {
   // Pan functionality with middle mouse button or right click
   let isPanning = false;
   let lastPanPosition = { x: 0, y: 0 };
+  
+  // Add event listener for element selection
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left - currentState.panOffset.x * currentState.scale) / currentState.scale;
+    const y = (e.clientY - rect.top - currentState.panOffset.y * currentState.scale) / currentState.scale;
+    
+    // Find element at click position
+    const clickedElement = currentState.elements.find(element => isPointInElement(x, y, element));
+    selectElement(clickedElement);
+  });
   
   canvas.addEventListener('mousedown', (e) => {
     if (e.button === 1 || e.button === 2) { // Middle or right mouse button
@@ -160,12 +169,27 @@ function setupEventListeners() {
 // Fetch element properties from server using htmx
 function fetchElementProperties(elementId) {
   const floorplanId = currentState.floorplanId;
+  
   // Make a simple htmx GET request
   console.log(`fetching element properties for ${elementId}`)
   htmx.ajax('GET', `/floorplan_editor/${floorplanId}/element/${elementId}`, {
     target: '#element-properties',
     swap: 'innerHTML'
   });
+}
+
+// Select an element and show its properties
+function selectElement(element) {
+  // Update the current state to track the selected element
+  currentState.selectedElement = element;
+  
+  // Only fetch properties for specific element types
+  if (element && ['machine', 'closet', 'emergency-kit'].includes(element.element_type)) {
+    fetchElementProperties(element.id);
+  }
+  
+  // Render to show the selection
+  render();
 }
 
 // Check if a point is inside an element
