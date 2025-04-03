@@ -585,83 +585,119 @@ function drawSelectionBox(ctx, element) {
 }
 
 // Draw preview while drawing
-function drawPreview(ctx, start, end) {
+function drawPreview(ctx, startPoint, endPoint) {
     ctx.save();
     
-    // Convert meter coordinates to canvas coordinates
-    const startPoint = {
-        x: start.x * currentState.scale + currentState.panOffset.x,
-        y: start.y * currentState.scale + currentState.panOffset.y
+    // Get preview points, applying snapping for doors and windows
+    let previewStart = startPoint;
+    let previewEnd = endPoint;
+    
+    // Apply snapping for doors and windows
+    if (['door-standard', 'door-emergency', 'window'].includes(currentState.currentTool)) {
+        const snappedPoints = getSnappedPreviewPoints(startPoint, endPoint);
+        previewStart = snappedPoints.start;
+        previewEnd = snappedPoints.end;
+    }
+    
+    // Convert to canvas coordinates
+    const start = {
+        x: previewStart.x * currentState.scale + currentState.panOffset.x,
+        y: previewStart.y * currentState.scale + currentState.panOffset.y
     };
     
-    const endPoint = {
-        x: end.x * currentState.scale + currentState.panOffset.x,
-        y: end.y * currentState.scale + currentState.panOffset.y
+    const end = {
+        x: previewEnd.x * currentState.scale + currentState.panOffset.x,
+        y: previewEnd.y * currentState.scale + currentState.panOffset.y
     };
-    
-    // Set styles based on the current tool
-    let fillStyle = 'transparent';
-    let strokeStyle = '#007bff';
-    let lineWidth = 2;
     
     switch (currentState.currentTool) {
         case 'wall':
-            strokeStyle = '#333';
-            lineWidth = 3;
+            ctx.strokeStyle = 'rgba(51, 51, 51, 0.5)';
+            ctx.lineWidth = 0.2 * currentState.scale;
+            ctx.lineCap = 'round';
+            
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
             break;
+            
         case 'door-standard':
-            strokeStyle = '#666';
-            lineWidth = 2;
+            ctx.strokeStyle = 'rgba(102, 102, 102, 0.5)';
+            ctx.lineWidth = 0.2 * currentState.scale;
+            
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+            
+            drawDoorSwing(ctx, start, end, 'standard', true);
             break;
+            
         case 'door-emergency':
-            strokeStyle = '#d9534f';
-            lineWidth = 2;
+            ctx.strokeStyle = 'rgba(217, 83, 79, 0.5)';
+            ctx.lineWidth = 0.2 * currentState.scale;
+            
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+            
+            drawDoorSwing(ctx, start, end, 'emergency', true);
             break;
+            
         case 'window':
-            strokeStyle = '#5bc0de';
-            lineWidth = 2;
+            ctx.strokeStyle = 'rgba(91, 192, 222, 0.5)';
+            ctx.lineWidth = 0.15 * currentState.scale;
+            
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+            
+            drawWindowMarkers(ctx, start, end, true);
             break;
+            
         case 'emergency-route':
-            strokeStyle = '#28a745'; // Green color for emergency routes
-            lineWidth = 3;
+            ctx.strokeStyle = 'rgba(40, 167, 69, 0.3)';
+            ctx.lineWidth = 1.0 * currentState.scale;
+            ctx.lineCap = 'round';
+            
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+            
+            // Draw arrow
+            drawRouteArrows(ctx, start, end, true);
             break;
+            
         case 'machine':
-            fillStyle = 'rgba(240, 173, 78, 0.3)';
-            strokeStyle = '#f0ad4e';
-            lineWidth = 1;
-            break;
         case 'closet':
-            fillStyle = 'rgba(217, 83, 79, 0.3)';
-            strokeStyle = '#d9534f';
-            lineWidth = 1;
+        case 'emergency-kit':
+            // Draw rectangle preview
+            const width = Math.abs(end.x - start.x);
+            const height = Math.abs(end.y - start.y);
+            const x = Math.min(start.x, end.x);
+            const y = Math.min(start.y, end.y);
+            
+            // Set styles based on element type
+            if (currentState.currentTool === 'machine') {
+                ctx.fillStyle = 'rgba(240, 173, 78, 0.3)';
+                ctx.strokeStyle = 'rgba(51, 51, 51, 0.5)';
+            } else if (currentState.currentTool === 'closet') {
+                ctx.fillStyle = 'rgba(91, 192, 222, 0.3)';
+                ctx.strokeStyle = 'rgba(25, 118, 210, 0.5)';
+            } else if (currentState.currentTool === 'emergency-kit') {
+                ctx.fillStyle = 'rgba(255, 236, 179, 0.3)';
+                ctx.strokeStyle = 'rgba(255, 87, 34, 0.5)';
+            }
+            
+            ctx.lineWidth = 0.05 * currentState.scale;
+            
+            ctx.fillRect(x, y, width, height);
+            ctx.strokeRect(x, y, width, height);
             break;
-    }
-    
-    // Draw preview based on the current tool
-    if (['wall', 'door-standard', 'door-emergency', 'window', 'emergency-route'].includes(currentState.currentTool)) {
-        // Line type preview
-        ctx.strokeStyle = strokeStyle;
-        ctx.lineWidth = lineWidth;
-        ctx.setLineDash([5, 5]);
-        
-        ctx.beginPath();
-        ctx.moveTo(startPoint.x, startPoint.y);
-        ctx.lineTo(endPoint.x, endPoint.y);
-        ctx.stroke();
-    } else {
-        // Rectangle type preview
-        const width = Math.abs(endPoint.x - startPoint.x);
-        const height = Math.abs(endPoint.y - startPoint.y);
-        const x = Math.min(startPoint.x, endPoint.x);
-        const y = Math.min(startPoint.y, endPoint.y);
-        
-        ctx.fillStyle = fillStyle;
-        ctx.strokeStyle = strokeStyle;
-        ctx.lineWidth = lineWidth;
-        ctx.setLineDash([5, 5]);
-        
-        ctx.fillRect(x, y, width, height);
-        ctx.strokeRect(x, y, width, height);
     }
     
     ctx.restore();

@@ -15,6 +15,31 @@ function getCanvasMousePosition(event, canvas) {
     return { x, y };
 }
 
+// Get snapped preview for doors and windows during drawing
+function getSnappedPreviewPoints(startPoint, endPoint) {
+    // Only apply for doors and windows
+    if (!['door-standard', 'door-emergency', 'window'].includes(currentState.currentTool)) {
+        return { start: startPoint, end: endPoint };
+    }
+    
+    // Try to find a wall at the starting position
+    let wall = findWallAtPosition(startPoint);
+    
+    // If no wall at start position, check for closest wall to snap to
+    if (!wall) {
+        const result = findClosestWall(startPoint, endPoint);
+        if (result.wall) {
+            return {
+                start: result.projectionStart,
+                end: result.projectionEnd,
+                wall: result.wall
+            };
+        }
+    }
+    
+    return { start: startPoint, end: endPoint };
+}
+
 // Find element at a specific position
 function findElementAtPosition(pos) {
     // Implement hit testing for different element types
@@ -116,16 +141,6 @@ function finishDrawing(endPoint) {
         return;
     }
     
-    // Check if door or window is being placed on a wall
-    if (['door-standard', 'door-emergency', 'window'].includes(currentState.currentTool)) {
-        const wall = findWallAtPosition(currentState.startPoint);
-        if (!wall) {
-            alert('Türen und Fenster können nur auf Wänden platziert werden.');
-            currentState.startPoint = null;
-            return;
-        }
-    }
-    
     // Create the new element
     const newElement = {
         id: generateId(),
@@ -136,13 +151,30 @@ function finishDrawing(endPoint) {
         properties: {}
     };
     
+    // Special handling for doors and windows
+    if (['door-standard', 'door-emergency', 'window'].includes(currentState.currentTool)) {
+        // Try to find a wall at the starting position
+        let wall = findWallAtPosition(currentState.startPoint);
+        
+        // If no wall at the start point, find the closest wall
+        if (!wall) {
+            const result = findClosestWall(currentState.startPoint, endPoint);
+            if (result.wall) {
+                wall = result.wall;
+                // Snap the door/window to the closest wall
+                newElement.start = { ...result.projectionStart };
+                newElement.end = { ...result.projectionEnd };
+            }
+        }
+    }
+    
     // Set default width based on element type
     if (currentState.currentTool === 'emergency-route') {
         newElement.width = 1.0; // Default 1 meter width for emergency routes
         newElement.properties = {
             routeName: 'Emergency Exit Route',
             exitPoint: 'end', // Default exit point is at the end
-            points: [{ ...currentState.startPoint }, { ...endPoint }] // Initialize with start and end points
+            points: [{ ...newElement.start }, { ...newElement.end }] // Initialize with start and end points
         };
     } 
     // Add default properties based on element type
@@ -167,6 +199,108 @@ function finishDrawing(endPoint) {
     
     // Reset drawing state
     currentState.startPoint = null;
+}
+
+// Find the closest wall to a line segment
+function findClosestWall(startPoint, endPoint) {
+    const maxDistance = 1.0; // Maximum distance to snap (1 meter)
+    let closestWall = null;
+    let minDistance = maxDistance;
+    let projectionStart = startPoint;
+    let projectionEnd = endPoint;
+    
+    // Calculate the direction vector of the door/window
+    const doorVector = {
+        x: endPoint.x - startPoint.x,
+        y: endPoint.y - startPoint.y
+    };
+    const doorLength = Math.sqrt(doorVector.x * doorVector.x + doorVector.y * doorVector.y);
+    
+    // Normalize the door vector
+    const doorDirection = {
+        x: doorVector.x / doorLength,
+        y: doorVector.y / doorLength
+    };
+    
+    for (const element of currentState.elements) {
+        if (element.element_type === 'wall') {
+            // Calculate the center point of the door/window
+            const centerPoint = {
+                x: (startPoint.x + endPoint.x) / 2,
+                y: (startPoint.y + endPoint.y) / 2
+            };
+            
+            // Calculate distance from center to wall
+            const distToWall = distanceToLineSegment(
+                centerPoint,
+                element.start,
+                element.end
+            );
+            
+            if (distToWall < minDistance) {
+                // Calculate the wall vector
+                const wallVector = {
+                    x: element.end.x - element.start.x,
+                    y: element.end.y - element.start.y
+                };
+                const wallLength = Math.sqrt(wallVector.x * wallVector.x + wallVector.y * wallVector.y);
+                
+                // Normalize the wall vector
+                const wallDirection = {
+                    x: wallVector.x / wallLength,
+                    y: wallVector.y / wallLength
+                };
+                
+                // Calculate the projection point of the center on the wall
+                const t = ((centerPoint.x - element.start.x) * wallVector.x + 
+                          (centerPoint.y - element.start.y) * wallVector.y) / 
+                          (wallVector.x * wallVector.x + wallVector.y * wallVector.y);
+                
+                // Ensure t is within [0, 1] for the wall segment
+                const clampedT = Math.max(0, Math.min(1, t));
+                
+                // Calculate the projection point on the wall
+                const projectionPoint = {
+                    x: element.start.x + clampedT * wallVector.x,
+                    y: element.start.y + clampedT * wallVector.y
+                };
+                
+                // Calculate the perpendicular vector to the wall (normalized)
+                const perpWallDirection = {
+                    x: -wallDirection.y,
+                    y: wallDirection.x
+                };
+                
+                // Calculate the door/window length
+                const doorWindowLength = Math.sqrt(
+                    Math.pow(endPoint.x - startPoint.x, 2) + 
+                    Math.pow(endPoint.y - startPoint.y, 2)
+                );
+                
+                // Calculate the new start and end points along the wall
+                const newStart = {
+                    x: projectionPoint.x - (wallDirection.x * doorWindowLength / 2),
+                    y: projectionPoint.y - (wallDirection.y * doorWindowLength / 2)
+                };
+                
+                const newEnd = {
+                    x: projectionPoint.x + (wallDirection.x * doorWindowLength / 2),
+                    y: projectionPoint.y + (wallDirection.y * doorWindowLength / 2)
+                };
+                
+                minDistance = distToWall;
+                closestWall = element;
+                projectionStart = newStart;
+                projectionEnd = newEnd;
+            }
+        }
+    }
+    
+    return {
+        wall: closestWall,
+        projectionStart: projectionStart,
+        projectionEnd: projectionEnd
+    };
 }
 
 // Find a wall at the given position

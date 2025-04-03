@@ -38,6 +38,24 @@ function setupCanvasEvents(canvas) {
         } else if (currentState.isDrawing && currentState.startPoint) {
             // If drawing, update the preview
             render(canvas, { previewEnd: pos });
+            
+            // Show a status message for snapping when drawing doors or windows
+            if (['door-standard', 'door-emergency', 'window'].includes(currentState.currentTool)) {
+                // Check if we'd snap to a wall
+                const snappedPoints = getSnappedPreviewPoints(currentState.startPoint, pos);
+                if (snappedPoints.wall) {
+                    // Show visual feedback in the UI
+                    const statusElement = document.getElementById('status-message');
+                    if (statusElement) {
+                        statusElement.textContent = 'Snapping to wall';
+                        statusElement.style.display = 'block';
+                        // Hide the message after 3 seconds
+                        setTimeout(() => {
+                            statusElement.style.display = 'none';
+                        }, 3000);
+                    }
+                }
+            }
         } else if (currentState.selectedElement && e.buttons === 1 && currentState.currentTool === 'select') {
             // If dragging a selected element
             dragSelectedElement(pos);

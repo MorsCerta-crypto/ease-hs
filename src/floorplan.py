@@ -216,7 +216,7 @@ def save_special_elements(floorplan_id, elements_data, timestamp):
 
 @ar.delete("/delete-floorplan/{floorplan_id}")
 def delete_floorplan(floorplan_id: int):
-    floorplans.delete(where='id=?', where_args=(floorplan_id,))
+    floorplans.delete(floorplan_id)
 
 
 @ar.get("/edit-floorplan/{floorplan_id}")
@@ -251,6 +251,7 @@ def edit_floorplan_page(sess, floorplan_id: int):
         Body(
             NavBar(
                 H3("Safety Floor Planner"),
+                A('Wechseln zu Anzeige', href=f'/show-floorplan/{floorplan_id}', cls="uk-button uk-button-default"),
                 A("Zurück zur Übersicht", href="/", cls="uk-button uk-button-default")
             ),
             Container(
@@ -258,7 +259,11 @@ def edit_floorplan_page(sess, floorplan_id: int):
                     controls(floorplan_id),
                     DivHStacked(
                         tools(),
-                        editor(floorplan_id, floorplan.width, floorplan.height, floorplan.data),
+                        Div(
+                            editor(floorplan_id, floorplan.width, floorplan.height, floorplan.data),
+                            Div(id="status-message", style="display:none;position:absolute;top:10px;right:10px;padding:5px 10px;background-color:rgba(0,0,0,0.6);color:white;border-radius:3px;"), 
+                            cls="position-relative"
+                        ),
                         floorplan_properties()
                     ),
                     cls="floorplan-editor",
@@ -297,6 +302,7 @@ def show_floorplan_page(floorplan_id: int):
         Body(
             NavBar(
                 H3("Safety Floor Planner"),
+                A('Wechseln zu Bearbeiten', href=f'/edit-floorplan/{floorplan_id}', cls="uk-button uk-button-default"),
                 A("Zurück zur Übersicht", href="/", cls="uk-button uk-button-default")
             ),
             Container(
