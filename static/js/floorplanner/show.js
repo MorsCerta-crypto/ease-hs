@@ -19,11 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
   
+  console.log('Initializing floorplan viewer with canvas:', canvas);
   currentState.canvas = canvas;
   currentState.ctx = canvas.getContext('2d');
   currentState.floorplanId = canvas.dataset.floorplanId;
   currentState.width = parseFloat(canvas.dataset.width);
   currentState.height = parseFloat(canvas.dataset.height);
+  
+  console.log(`Floorplan dimensions: ${currentState.width}m x ${currentState.height}m, ID: ${currentState.floorplanId}`);
   
   // Calculate the scale to fit the canvas
   const scaleX = canvas.width / currentState.width;
@@ -31,26 +34,38 @@ document.addEventListener('DOMContentLoaded', () => {
   currentState.scale = Math.min(scaleX, scaleY) * 0.9;
   
   // Center the floorplan
-  currentState.panOffset.x = (canvas.width / currentState.scale - currentState.width) / 2;
-  currentState.panOffset.y = (canvas.height / currentState.scale - currentState.height) / 2;
+  currentState.panOffset.x = (canvas.width - currentState.width * currentState.scale) / 2;
+  currentState.panOffset.y = (canvas.height - currentState.height * currentState.scale) / 2;
+  
+  console.log(`Scale: ${currentState.scale}, Pan offset: (${currentState.panOffset.x}, ${currentState.panOffset.y})`);
   
   // Initialize elements from data attribute
   try {
     const elementsData = canvas.dataset.floorplanElements;
+    console.log('Raw elements data:', elementsData);
     
     // If data attribute is empty or malformed, try fetching from API
     if (!elementsData || elementsData === '[]') {
+      console.log('No elements in data attribute, fetching from API');
       fetchElementsFromAPI();
     } else {
-      currentState.elements = JSON.parse(elementsData || '[]');
-      
-      // If still no elements, fetch from API
-      if (currentState.elements.length === 0) {
+      try {
+        // Parse the JSON data
+        currentState.elements = JSON.parse(elementsData);
+        console.log('Parsed elements:', currentState.elements);
+        
+        // If still no elements, fetch from API
+        if (currentState.elements.length === 0) {
+          console.log('Empty elements array, fetching from API');
+          fetchElementsFromAPI();
+        }
+      } catch (e) {
+        console.error('Error parsing elements JSON:', e);
         fetchElementsFromAPI();
       }
     }
   } catch (e) {
-    console.error('Error parsing elements:', e);
+    console.error('Error accessing elements data:', e);
     currentState.elements = [];
     // Try to fetch elements from API as fallback
     fetchElementsFromAPI();
@@ -72,9 +87,11 @@ function fetchElementsFromAPI() {
     return;
   }
   
+  console.log(`Fetching elements from API for floorplan ${floorplanId}`);
   fetch(`/floorplan_editor/${floorplanId}/elements`)
     .then(response => response.json())
     .then(data => {
+      console.log('API response:', data);
       if (Array.isArray(data)) {
         currentState.elements = data;
       } else if (typeof data === 'string') {
@@ -102,11 +119,21 @@ function setupEventListeners() {
   // Add event listener for element selection
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left - currentState.panOffset.x * currentState.scale) / currentState.scale;
-    const y = (e.clientY - rect.top - currentState.panOffset.y * currentState.scale) / currentState.scale;
+    // Convert screen coordinates to world coordinates
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    
+    // Convert screen coordinates to world coordinates
+    const worldX = (screenX - currentState.panOffset.x) / currentState.scale;
+    const worldY = (screenY - currentState.panOffset.y) / currentState.scale;
+    
+    console.log('Click at world coordinates:', worldX, worldY);
     
     // Find element at click position
-    const clickedElement = currentState.elements.find(element => isPointInElement(x, y, element));
+    const clickedElement = currentState.elements.find(element => isPointInSafetyElement(worldX, worldY, element));
+    if (clickedElement) {
+      console.log('Selected element:', clickedElement);
+    }
     selectElement(clickedElement);
   });
   
@@ -184,6 +211,7 @@ function selectElement(element) {
   currentState.selectedElement = element;
   
   // Only fetch properties for specific element types
+  console.log(element)
   if (element && ['machine', 'closet', 'emergency-kit'].includes(element.element_type)) {
     fetchElementProperties(element.id);
   }
@@ -193,28 +221,24 @@ function selectElement(element) {
 }
 
 // Check if a point is inside an element
-function isPointInElement(x, y, element) {
+function isPointInSafetyElement(x, y, element) {
   if (!element) return false;
+  // Calculate bounds using start/end points
+
   
   switch (element.element_type) {
-    case 'wall':
-    case 'door-standard':
-    case 'door-emergency':
-    case 'window':
-    case 'emergency-route':
-      return isPointOnLine(x, y, element.start, element.end, 10);
-    case 'emergency-kit':
-    case 'machine':
-    case 'closet':
-      // Calculate bounds using start/end points
-      const width = Math.abs(element.end.x - element.start.x);
-      const height = Math.abs(element.end.y - element.start.y);
-      const rectX = Math.min(element.start.x, element.end.x);
-      const rectY = Math.min(element.start.y, element.end.y);
-      
-      return x >= rectX && x <= rectX + width && y >= rectY && y <= rectY + height;
-    default:
-      return false;
+      case 'wall': return false;
+      case 'door-standard': return false;
+      case 'door-emergency': return false;
+      case 'window': return false;
+      case 'emergency-route': return false
+      default:
+        const width = Math.abs(element.end.x - element.start.x);
+        const height = Math.abs(element.end.y - element.start.y);
+        const rectX = Math.min(element.start.x, element.end.x);
+        const rectY = Math.min(element.start.y, element.end.y);
+        
+        return x >= rectX && x <= rectX + width && y >= rectY && y <= rectY + height;
   }
 }
 
@@ -249,36 +273,67 @@ function isPointInRect(x, y, position, size) {
          y >= position.y && y <= position.y + size.height;
 }
 
-// Render the floorplan
+// Render the floorplan on the canvas
 function render() {
-  const { canvas, ctx, width, height, elements, selectedElement, scale, panOffset } = currentState;
+  const canvas = currentState.canvas;
+  const ctx = currentState.ctx;
   
   if (!canvas || !ctx) {
-    console.error('Canvas or context not available');
+    console.error('Canvas or context not available for rendering');
     return;
   }
   
-  // Clear canvas with transparent background
+  // Clear the canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
-  // Set up transform
-  ctx.save();
-  ctx.translate(panOffset.x * scale, panOffset.y * scale);
-  ctx.scale(scale, scale);
+  // Draw grid
+  drawGrid(ctx, canvas.width, canvas.height);
   
-  // Draw elements
-  elements.forEach(element => {
-    try {
-      drawElement(ctx, element);
-      
-      // Highlight selected element
-      if (selectedElement && element.id === selectedElement.id) {
-        highlightElement(ctx, element);
-      }
-    } catch (e) {
-      console.error('Error drawing element:', element, e);
-    }
-  });
+  // Save the context state before applying transformations
+  ctx.save();
+  
+  // Apply global transformation for all elements
+  ctx.translate(currentState.panOffset.x, currentState.panOffset.y);
+  ctx.scale(currentState.scale, currentState.scale);
+  
+  // Draw all elements with transformation applied
+  for (const element of currentState.elements) {
+    drawElement(ctx, element);
+  }
+  
+  // Highlight selected element if any
+  if (currentState.selectedElement) {
+    highlightElement(ctx, currentState.selectedElement);
+  }
+  
+  // Restore the context state
+  ctx.restore();
+}
+
+// Draw grid on the canvas
+function drawGrid(ctx, width, height) {
+  ctx.save();
+  ctx.strokeStyle = '#eee';
+  ctx.lineWidth = 0.5;
+  
+  const gridSize = 1; // 1 meter grid
+  const gridSpacing = gridSize * currentState.scale;
+  
+  // Draw vertical grid lines
+  for (let x = currentState.panOffset.x % gridSpacing; x < width; x += gridSpacing) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
+  
+  // Draw horizontal grid lines
+  for (let y = currentState.panOffset.y % gridSpacing; y < height; y += gridSpacing) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
   
   ctx.restore();
 }
@@ -289,6 +344,8 @@ function drawElement(ctx, element) {
     console.warn('Invalid element:', element);
     return;
   }
+  
+  console.log(`Drawing element: ${element.element_type} at (${element.start.x}, ${element.start.y}) to (${element.end.x}, ${element.end.y})`);
   
   switch (element.element_type) {
     case 'wall':
@@ -326,7 +383,7 @@ function drawWall(ctx, wall) {
   ctx.moveTo(wall.start.x, wall.start.y);
   ctx.lineTo(wall.end.x, wall.end.y);
   ctx.strokeStyle = '#333';
-  ctx.lineWidth = 0.2;
+  ctx.lineWidth = wall.width || 0.2; // Use wall width if available, else default
   ctx.stroke();
 }
 
@@ -364,7 +421,7 @@ function drawWindow(ctx, window) {
   ctx.moveTo(window.start.x, window.start.y);
   ctx.lineTo(window.end.x, window.end.y);
   ctx.strokeStyle = '#2196F3';
-  ctx.lineWidth = 0.15;
+  ctx.lineWidth = window.width || 0.15; // Use window width if available, else default
   ctx.stroke();
   
   // Add window details

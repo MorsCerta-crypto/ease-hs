@@ -65,10 +65,18 @@ function initFloorPlanEditor() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize the editor when the floorplan canvas is loaded
+    // Check if we're in the editor page and initialize directly
+    if (document.getElementById('floorplan-canvas') && 
+        document.getElementById('floorplan-editor-container')) {
+        console.log('Initializing floor plan editor directly');
+        initFloorPlanEditor();
+    }
+    
+    // Also listen for htmx swaps for dynamic loading
     document.body.addEventListener('htmx:afterSwap', (event) => {
         if (event.detail.target.id === 'main-content' && 
             document.getElementById('floorplan-canvas')) {
+            console.log('Initializing floor plan editor after htmx swap');
             initFloorPlanEditor();
         }
     });

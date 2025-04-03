@@ -7,7 +7,7 @@ from datetime import datetime
 # Initialize FastHTML app with blue theme
 app, rt = fast_app(live=True,
     hdrs=(
-        Theme.blue.headers(),
+        Theme.zinc.headers(),
         Link(rel="stylesheet", href="/static/css/floorplanner.css"),
     ),
 )
@@ -31,8 +31,9 @@ def index():
                 Td(f"{plan.width}m × {plan.height}m"),
                 Td(updated_date),
                 Td(
-                    A("Bearbeiten", href=f"/edit-floorplan/{plan.id}", cls="uk-button uk-button-primary uk-button-small"),
-                    A("Anzeigen", href=f"/show-floorplan/{plan.id}", cls="uk-button uk-button-secondary uk-button-small ml-2")
+                    A("Bearbeiten", href=f"/edit-floorplan/{plan.id}", cls=ButtonT.default),
+                    A("Anzeigen", href=f"/show-floorplan/{plan.id}", cls=ButtonT.default),
+                    Button("Löschen", hx_delete=f"/delete-floorplan/{plan.id}", cls=ButtonT.destructive)
                 )
             ))
     

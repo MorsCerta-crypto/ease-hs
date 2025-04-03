@@ -177,48 +177,57 @@ def save_special_elements(floorplan_id, elements_data, timestamp):
     special_types = ["machine", "closet", "emergency-kit"]
     
     for element in elements_data:
-        if element.get("element_type") in special_types:
-            element_id = element.get("id")
-            element_type = element.get("element_type")
-            
-            # Check if element already exists in the elements table
-            existing = elements(
-                where="floorplan_id=? AND element_id=?",
-                where_args=(floorplan_id, element_id)
+        if element.get("element_type") not in special_types:
+            print(f'not saving element {element.get("id")} {element.get("element_type")}')
+            continue
+        element_id = element.get("id")
+        element_type = element.get("element_type")
+        
+        # Check if element already exists in the elements table
+        existing = elements(
+            where="floorplan_id=? AND element_id=?",
+            where_args=(floorplan_id, element_id)
+        )
+        
+        if existing:
+            # Element exists, just update the timestamp
+            existing = existing[0]
+            print(f"Updating existing element: {element_id}, {element_type}")
+            existing.updated_at = timestamp
+            elements.update(existing)
+        else:
+            # Create new element with default values
+            print(f"Creating new element: {element_id}, {element_type}")
+            elements.insert(
+                floorplan_id=floorplan_id,
+                element_id=element_id,
+                element_type=element_type,
+                name=f"New {element_type.title()}",
+                description="",
+                dangers="",
+                safety_instructions="",
+                trained_employees="[]",
+                maintenance_schedule="",
+                last_maintenance=None,
+                created_at=timestamp,
+                updated_at=timestamp
             )
             
-            if existing:
-                # Element exists, just update the timestamp
-                existing = existing[0]
-                print(f"Updating existing element: {element_id}, {element_type}")
-                existing.updated_at = timestamp
-                elements.update(existing)
-            else:
-                # Create new element with default values
-                print(f"Creating new element: {element_id}, {element_type}")
-                elements.insert(
-                    floorplan_id=floorplan_id,
-                    element_id=element_id,
-                    element_type=element_type,
-                    name=f"New {element_type.title()}",
-                    description="",
-                    dangers="",
-                    safety_instructions="",
-                    trained_employees="[]",
-                    maintenance_schedule="",
-                    last_maintenance=None,
-                    created_at=timestamp,
-                    updated_at=timestamp
-                )
+
+@ar.delete("/delete-floorplan/{floorplan_id}")
+def delete_floorplan(floorplan_id: int):
+    floorplans.delete(where='id=?', where_args=(floorplan_id,))
+
 
 @ar.get("/edit-floorplan/{floorplan_id}")
 def edit_floorplan_page(sess, floorplan_id: int):
     sess['floorplan-mode'] = 'edit'
     
     try:
-        floorplan = floorplans.fetchone(id=floorplan_id)
+        floorplan = floorplans(where='id=?', where_args=(floorplan_id,))
         if not floorplan:
             raise ValueError("Floorplan not found")
+        else: floorplan = floorplan[0]
     except Exception as e:
         return Main(
             Head(Title("Fehler")),
@@ -264,9 +273,10 @@ def edit_floorplan_page(sess, floorplan_id: int):
 @ar.get("/show-floorplan/{floorplan_id}")
 def show_floorplan_page(floorplan_id: int):
     try:
-        floorplan = floorplans.fetchone(id=floorplan_id)
+        floorplan = floorplans(where='id=?', where_args=(floorplan_id,))
         if not floorplan:
             raise ValueError("Floorplan not found")
+        else: floorplan = floorplan[0]
     except Exception as e:
         return Main(
             Head(Title("Fehler")),
@@ -312,10 +322,11 @@ def show_floorplan_page(floorplan_id: int):
 def get_floorplan_elements(floorplan_id: int):
     try:
         # Get the floorplan from database
-        db_floorplan = floorplans.fetchone(id=floorplan_id)
+        db_floorplan = floorplans(where='id=?', where_args=(floorplan_id,))
         if not db_floorplan:
             return {"error": "Floorplan not found"}, 404
-        
+        else: db_floorplan = db_floorplan[0]
+        print(db_floorplan.data)
         # Parse and return the elements
         return db_floorplan.data
     except Exception as e:
@@ -325,14 +336,14 @@ def get_floorplan_elements(floorplan_id: int):
 def element_safety_form(floorplan_id: int, element_id: str):
     try:
         # Get the element from database
-        element = elements.fetchone(
+        element = elements(
             where="floorplan_id=? AND element_id=?",
             where_args=(floorplan_id, element_id)
         )
         
         if not element:
             return Div("Element nicht gefunden", cls="error-message")
-        
+        else: element = element[0]
         return Main(
             Head(
                 Title(f"Sicherheitsdaten für {element.name}")
@@ -373,7 +384,7 @@ def element_safety_form(floorplan_id: int, element_id: str):
 @ar.post('/element/{floorplan_id}/{element_id}/safety/save')
 def save_element_safety(floorplan_id: int, element_id: str, name: str, description: str, dangers: str, 
                          safety_instructions: str, trained_employees: str, maintenance_schedule: str, 
-                         last_maintenance: str = None):
+                         last_maintenance: str = ""):
     try:
         # Get the element
         element = elements.fetchone(
