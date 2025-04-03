@@ -20,7 +20,8 @@ function initFloorPlanEditor() {
     if (!canvas) return;
     
     // Get the floorplan data attributes
-    currentState.floorplanId = canvas.dataset.floorplanId;
+    currentState.floorplanId = parseInt(canvas.getAttribute('data-floorplan-id'));
+    console.log('Floorplan ID from attribute:', canvas.getAttribute('data-floorplan-id'));
     const width = parseFloat(canvas.dataset.width);
     const height = parseFloat(canvas.dataset.height);
     
@@ -64,9 +65,14 @@ function initFloorPlanEditor() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize the editor when the floorplan canvas is loaded
+    // Initialize immediately if canvas already exists
+    if (document.getElementById('floorplan-canvas')) {
+        initFloorPlanEditor();
+    }
+    
+    // Initialize the editor when the floorplan canvas is loaded via HTMX
     document.body.addEventListener('htmx:afterSwap', (event) => {
-        if (event.detail.target.id === 'main-content' && 
+        if ((event.detail.target.id === 'main-content' || event.detail.target.id === 'floorplan-editor-container') && 
             document.getElementById('floorplan-canvas')) {
             initFloorPlanEditor();
         }
@@ -90,6 +96,5 @@ function deleteSelectedElement() {
         currentState.selectedElement = null;
         updatePropertiesPanel();
         render(document.getElementById('floorplan-canvas'));
-        saveChanges();
     }
 }

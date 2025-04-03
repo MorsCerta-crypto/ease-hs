@@ -307,8 +307,6 @@ window.updateElementProperty = function(propertyPath, value) {
     const canvas = document.getElementById('floorplan-canvas');
     if (canvas) render(canvas);
     
-    // Save changes
-    // saveChanges();
 };
 
 // Delete the selected element

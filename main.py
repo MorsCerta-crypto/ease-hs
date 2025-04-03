@@ -1,48 +1,63 @@
 from fasthtml.common import *
 from monsterui.all import *
 from pathlib import Path
-from src.floorplan import create_floorplan, load_floorplan, ar
+from src.floorplan import ar, floorplans
+from datetime import datetime
 
 # Initialize FastHTML app with blue theme
 app, rt = fast_app(live=True,
     hdrs=(
         Theme.blue.headers(),
         Link(rel="stylesheet", href="/static/css/floorplanner.css"),
-        # Import JavaScript modules in the correct order
-        Script(src="/static/js/floorplanner/core.js"),
-        Script(src="/static/js/floorplanner/elements.js"),
-        Script(src="/static/js/floorplanner/ui.js"),
-        Script(src="/static/js/floorplanner/render.js"),
     ),
-    # static_path="static"
 )
 ar.to_app(app)
+
 # Home route
 @app.get("/")
 def index():
+    # Get list of floor plans from database
+    db_floorplans = floorplans(where='user_id=?', where_args=(1,))
+    
+    table_content = []
+    if db_floorplans:
+        for plan in db_floorplans:
+            # Format the date
+            updated_date = datetime.fromisoformat(plan.updated_at).strftime("%d.%m.%Y %H:%M")
+            
+            # Create row with actions
+            table_content.append(Tr(
+                Td(plan.name),
+                Td(f"{plan.width}m × {plan.height}m"),
+                Td(updated_date),
+                Td(
+                    A("Bearbeiten", href=f"/edit-floorplan/{plan.id}", cls="uk-button uk-button-primary uk-button-small"),
+                    A("Anzeigen", href=f"/show-floorplan/{plan.id}", cls="uk-button uk-button-secondary uk-button-small ml-2")
+                )
+            ))
+    
+    floorplan_table = Table(
+        Thead(Tr(
+            Th("Name"),
+            Th("Abmessungen"),
+            Th("Zuletzt aktualisiert"),
+            Th("Aktionen")
+        )),
+        Tbody(*table_content if table_content else [Tr(Td("Keine Grundrisse gefunden", colspan="4", cls="uk-text-center"))]),
+        cls="uk-table uk-table-divider uk-table-hover"
+    )
+    
     return Titled(
         "Safety Floor Planner",
         NavBar(
             H3("Safety Floor Planner"),
-            Button("New Floor Plan", hx_get=create_floorplan, hx_target="#main-content"),
-            Button("Load Floor Plan", hx_get=load_floorplan, hx_target="#main-content"),
+            A("Neuer Grundriss", href="/create_floorplan", cls="uk-button uk-button-primary"),
         ),
         Container(
-            Div(
-                Card(
-                    H3("Welcome to Safety Floor Planner"),
-                    P("Create and manage floor plans with safety-relevant elements"),
-                    P("Use this tool to draw floor plans of your facility including:"),
-                    Ul(
-                        Li("Walls and room layouts"),
-                        Li("Doors (red emergency exits and standard gray)"),
-                        Li("Windows for ventilation and emergency access"),
-                        Li("Machines (clickable with safety information)"),
-                        Li("Safety closets for dangerous materials")
-                    ),
-                    Button("Start New Floor Plan", hx_get=create_floorplan, hx_target="#main-content")
-                ),
-                id="main-content"
+            Card(
+                CardHeader(H3("Meine Grundrisse")),
+                CardBody(floorplan_table),
+                CardFooter(P("Klicken Sie auf 'Bearbeiten', um einen Grundriss zu ändern oder 'Anzeigen' für eine schreibgeschützte Ansicht."))
             ),
             cls=("mt-5", "uk-container-xl")
         )

@@ -167,9 +167,6 @@ function finishDrawing(endPoint) {
     // Select the new element
     selectElement(newElement);
     
-    // Save changes
-    saveChanges();
-    
     // Reset drawing state
     currentState.startPoint = null;
 }
@@ -332,8 +329,6 @@ function resizeSelectedElement(pos) {
     // Update the properties panel
     updatePropertiesPanel();
     
-    // Save changes
-    saveChanges();
 }
 
 // Delete the selected element
@@ -352,8 +347,6 @@ window.deleteSelectedElement = function() {
         const canvas = document.getElementById('floorplan-canvas');
         if (canvas) render(canvas);
         
-        // Save changes
-        saveChanges();
     }
 };
 
@@ -368,8 +361,6 @@ function addPointToEmergencyRoute(pos) {
     // Update the properties panel
     updatePropertiesPanel();
     
-    // Save changes
-    saveChanges();
 }
 
 // Remove point from emergency route
@@ -389,7 +380,4 @@ function removePointFromEmergencyRoute(index) {
     
     // Update the properties panel
     updatePropertiesPanel();
-    
-    // Save changes
-    saveChanges();
 } 

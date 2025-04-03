@@ -12,14 +12,28 @@ ar = APIRouter()
 # Create a new floor plan
 @ar.get("/create_floorplan")
 def create_floorplan():
-    return Card(
-        CardHeader(H3("Neuer Grundriss")),
-        CardBody(
-            Form(
-                LabelInput("Grundriss Name", name="name", required=True),
-                LabelInput("Breite (Meter)", name="width", type="number", value="20", min="5", max="100"),
-                LabelInput("Höhe (Meter)", name="height", type="number", value="15", min="5", max="100"),
-                Button("Erstellen", type="submit", hx_post=initialize_floorplan, hx_target="#main-content")
+    return Main(
+        Head(
+            Title("Neuer Grundriss")
+        ),
+        Body(
+            NavBar(
+                H3("Safety Floor Planner"),
+                A("Zurück zur Übersicht", href="/", cls="uk-button uk-button-default")
+            ),
+            Container(
+                Card(
+                    CardHeader(H3("Neuer Grundriss")),
+                    CardBody(
+                        Form(
+                            LabelInput("Grundriss Name", name="name", required=True),
+                            LabelInput("Breite (Meter)", name="width", type="number", value="20", min="5", max="100"),
+                            LabelInput("Höhe (Meter)", name="height", type="number", value="15", min="5", max="100"),
+                            Button("Erstellen", type="submit", hx_post=initialize_floorplan)
+                        )
+                    )
+                ),
+                cls=("mt-5", "uk-container-xl")
             )
         )
     )
@@ -37,25 +51,12 @@ def initialize_floorplan(sess, name: str, width: float, height: float):
         data="[]",
         created_at=current_time,
         updated_at=current_time)
-    sess['floorplan-mode'] = 'edit'
-    return floorplan_editor(sess, floorplan_id=floorplan.id)
+    
+    # Redirect to the edit page
+    return RedirectResponse(f"/edit-floorplan/{floorplan.id}")
 
 # Load existing floor plans
-@ar.get("/load_floorplan")
-def load_floorplan():
-    # Get list of floor plans from database
-    db_floorplans = floorplans(where='user_id=?', where_args=(1,))
-    if not db_floorplans:
-        return Card(H3("Keine Grundrisse gefunden"),
-            P("Keine vorhandenen Grundrisse gefunden. Erstellen Sie einen neuen, um zu beginnen."),
-            Button("Neu erstellen", hx_get=create_floorplan, hx_target="#main-content"))
-    
-    return Card(
-        CardHeader(H3("Grundriss laden")),
-        CardBody(
-            Div(P("Wählen Sie einen Grundriss zum Laden:"),
-                Ul(*[Li(Button(plan.name, hx_get=floorplan_editor.to(floorplan_id=plan.id), hx_target="#main-content")) for plan in db_floorplans]),
-                cls="space-y-4")))
+
 
 
 def editor(floorplan_id: int, width, height, data):
@@ -83,7 +84,6 @@ def controls(floorplan_id:int):
     return DivHStacked(
             Button("Speichern", hx_post=f'/save_floorplan/{floorplan_id}', hx_target="#save-status", hx_vals="js:{elements: JSON.stringify(currentState.elements)}"),
             Button("Als PNG exportieren", id="export-png"),
-            Button("Modus ändern", cls="tool-btn", hx_get=f"/floorplan_editor/{floorplan_id}/change-mode", hx_target="#floorplan-editor-container"),
             Button("Zurück zur Startseite", hx_get='/', hx_target="#main-content"),
             Div(id="save-status"))
     
@@ -106,14 +106,6 @@ def tools():
                 cls="gap-2"
             )))
     
-@ar.get("/floorplan_editor/{floorplan_id}/change-mode")
-def change_mode(sess, floorplan_id: int):
-    mode = sess['floorplan-mode']
-    if mode == 'edit':
-        sess['floorplan-mode'] = 'select'
-    else:
-        sess['floorplan-mode'] = 'edit'
-    return floorplan_editor(sess, floorplan_id=floorplan_id)
 
 @ar.get('/floorplan_editor/{floorplan_id}/element/{element_id}')
 def get_element_properties(floorplan_id: int, element_id: str):
@@ -154,31 +146,6 @@ def get_element_properties(floorplan_id: int, element_id: str):
     except Exception as e:
         return Div(f"Fehler beim Laden der Eigenschaften: {str(e)}", cls="error-message")
 
-@ar.get('/floorplan_editor/{floorplan_id}')
-def floorplan_editor(sess, floorplan_id: int):
-    # Load floor plan data from database
-    if not 'floorplan-mode' in sess: sess['floorplan-mode'] = 'edit'
-    mode = sess['floorplan-mode']
-    try:
-        floorplan = floorplans.fetchone(id=floorplan_id)
-        if not floorplan:
-            raise ValueError("Floorplan not found")
-    except Exception as e:
-        return Card(
-            H3("Fehler"),
-            P(f"Grundriss konnte nicht geladen werden: {str(e)}"),
-            Button("Zurück zur Startseite", hx_get='/', hx_target="#main-content"))
-    
-    return DivVStacked(
-        controls(floorplan_id),
-        DivHStacked(
-            tools() if mode=='edit' else Div(id="element-properties", cls="properties-panel"),
-            editor(floorplan_id, floorplan.width, floorplan.height, floorplan.data),
-        ),
-        cls="floorplan-editor",
-        id="floorplan-editor-container",
-        data_mode=mode
-    )
 
 # Save floor plan
 @ar.post("/save_floorplan/{floorplan_id}")
@@ -199,4 +166,99 @@ def save_floorplan(floorplan_id: int, elements: str = "[]"):
         return Div("Grundriss erfolgreich gespeichert", cls="success-message", id='save-status', hx_swap="delete", hx_target='save-status', hx_trigger='every 20s')
     except Exception as e:
         return Div(f"Fehler beim Speichern des Grundrisses: {str(e)}", cls="error-message", id='save-status', hx_swap="delete", hx_target='save-status', hx_trigger='every 20s')
+
+@ar.get("/edit-floorplan/{floorplan_id}")
+def edit_floorplan_page(sess, floorplan_id: int):
+    sess['floorplan-mode'] = 'edit'
+    
+    try:
+        floorplan = floorplans.fetchone(id=floorplan_id)
+        if not floorplan:
+            raise ValueError("Floorplan not found")
+    except Exception as e:
+        return Main(
+            Head(Title("Fehler")),
+            Body(
+                Card(
+                    H3("Fehler"),
+                    P(f"Grundriss konnte nicht geladen werden: {str(e)}"),
+                    A("Zurück zur Startseite", href='/', cls="uk-button uk-button-primary")
+                )
+            )
+        )
+    
+    return Main(
+        Head(
+            Title(f"Grundriss bearbeiten: {floorplan.name}"),
+            Script(src="/static/js/floorplanner/core.js"),
+            Script(src="/static/js/floorplanner/elements.js"),
+            Script(src="/static/js/floorplanner/ui.js"),
+            Script(src="/static/js/floorplanner/render.js")
+        ),
+        Body(
+            NavBar(
+                H3("Safety Floor Planner"),
+                A("Zurück zur Übersicht", href="/", cls="uk-button uk-button-default")
+            ),
+            Container(
+                DivVStacked(
+                    controls(floorplan_id),
+                    DivHStacked(
+                        tools(),
+                        editor(floorplan_id, floorplan.width, floorplan.height, floorplan.data),
+                        floorplan_properties()
+                    ),
+                    cls="floorplan-editor",
+                    id="floorplan-editor-container",
+                    data_mode="edit"
+                ),
+                cls=("mt-5", "uk-container-xl")
+            )
+        )
+    )
+
+@ar.get("/show-floorplan/{floorplan_id}")
+def show_floorplan_page(floorplan_id: int):
+    try:
+        floorplan = floorplans.fetchone(id=floorplan_id)
+        if not floorplan:
+            raise ValueError("Floorplan not found")
+    except Exception as e:
+        return Main(
+            Head(Title("Fehler")),
+            Body(
+                Card(
+                    H3("Fehler"),
+                    P(f"Grundriss konnte nicht geladen werden: {str(e)}"),
+                    A("Zurück zur Startseite", href='/', cls="uk-button uk-button-primary")
+                )
+            )
+        )
+    
+    return Main(
+        Head(
+            Title(f"Grundriss anzeigen: {floorplan.name}"),
+            Script(src="/static/js/floorplanner/core.js"),
+            Script(src="/static/js/floorplanner/elements.js"),
+            Script(src="/static/js/floorplanner/show.js")
+        ),
+        Body(
+            NavBar(
+                H3("Safety Floor Planner"),
+                A("Zurück zur Übersicht", href="/", cls="uk-button uk-button-default")
+            ),
+            Container(
+                DivVStacked(
+                    Div(
+                        H3(f"Grundriss: {floorplan.name}"),
+                        cls="view-header"
+                    ),
+                    editor(floorplan_id, floorplan.width, floorplan.height, floorplan.data),
+                    cls="floorplan-viewer",
+                    id="floorplan-viewer-container"
+                ),
+                cls=("mt-5", "uk-container-xl")
+            )
+        )
+    )
 
