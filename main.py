@@ -8,7 +8,9 @@ app, rt = fast_app(live=True,
     hdrs=(
         Theme.blue.headers(),
         Link(rel="stylesheet", href="/static/css/floorplanner.css"),
-        # Import JavaScript modules in the correct order
+        # Load Fabric.js before our main.js
+        Script(src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"),
+        # Script(src="/static/js/main.js", type="module"),
     ),
     # static_path="static"
 )
