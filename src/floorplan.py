@@ -75,10 +75,8 @@ def editor(floorplan_id: int, width, height, data):
         )
     
 def floorplan_properties():
-    return Div(Card(H4("Eigenschaften"),
-                Div(id="element-properties", cls="properties-panel"),
-                cls=""),
-            cls="")
+    return Div(id="element-properties", cls="properties-panel"),
+
     
 def controls(floorplan_id:int):
     return DivHStacked(
@@ -130,27 +128,27 @@ def get_element_properties(floorplan_id: int, element_id: str):
                             LabelInput("Typ", name="element_type", value=props.element_type, readonly=True),
                             LabelInput("Name", name="name", value=props.name),
                             LabelTextArea("Allgemeine Informationen", name="description", value=props.description),
-                            cls="element-props-form",
+                            cls="element-props-form gap-2 mb-4",
                             hx_post=f"/element/{floorplan_id}/{props.element_id}/update-basic",
                             hx_target="#element-properties"
                         ),
+                        DivVStacked(
                         Button("Gefährdungsbeurteilung", 
                                cls="uk-button uk-button-primary uk-width-1-1 uk-margin-small-top",
                                hx_get=f"/element/{floorplan_id}/{props.element_id}/risk-assessment",
                                hx_target="#modal-container"),
-                        Button("Betriebsanweisung", 
-                               cls="uk-button uk-button-primary uk-width-1-1 uk-margin-small-top",
-                               hx_get=f"/element/{floorplan_id}/{props.element_id}/operating-instructions",
-                               hx_target="#modal-container"),
-                        Button("Schulungsnachweise", 
-                               cls="uk-button uk-button-primary uk-width-1-1 uk-margin-small-top",
-                               hx_get=f"/element/{floorplan_id}/{props.element_id}/training-records",
-                               hx_target="#modal-container"),
-                        A("Sicherheitsdaten bearbeiten", 
-                          href=f"/element/{floorplan_id}/{props.element_id}/safety",
-                          cls="uk-button uk-button-secondary uk-width-1-1 uk-margin-small-top"),
+                            Button("Betriebsanweisung", 
+                                cls="uk-button uk-button-primary uk-width-1-1 uk-margin-small-top",
+                                hx_get=f"/element/{floorplan_id}/{props.element_id}/operating-instructions",
+                                hx_target="#modal-container"),
+                            Button("Schulungsnachweise", 
+                                cls="uk-button uk-button-primary uk-width-1-1 uk-margin-small-top",
+                                hx_get=f"/element/{floorplan_id}/{props.element_id}/training-records",
+                                hx_target="#modal-container"),
+                            cls="gap-2"
+                        ),
                         Div(id="modal-container"),  # Container for modals
-                        cls="properties-panel"
+                        cls="properties-panel gap-2"
                     ),
                     cls=""
                 ),

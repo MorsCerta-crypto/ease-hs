@@ -9,24 +9,19 @@ from src.db import elements, risk_assessments, operating_instructions, training_
 
 def modal_wrapper(title, content, modal_id="modal"):
     """Generic modal wrapper for all modals"""
-    return Div(
-        Div(
-            Div(
-                Div(
-                    H3(title, cls="uk-modal-title"),
-                    Button("×", cls="uk-modal-close-default", type="button", uk_close=""),
-                    cls="uk-modal-header"
-                ),
-                Div(content, cls="uk-modal-body"),
-                cls="uk-modal-dialog uk-margin-auto-vertical"
-            ),
-            cls="uk-modal-container",
-            id=modal_id,
-            uk_modal=""
+    return Modal(
+        content,
+        header=Div(
+            H3(title, cls="uk-modal-title"),
+            ModalCloseButton()
         ),
-        Script("UIkit.modal('#" + modal_id + "').show();")
+        cls="uk-modal-container",
+        dialog_cls="uk-modal-dialog uk-margin-auto-vertical",
+        header_cls="uk-modal-header bg-white dark:bg-gray-800",
+        body_cls="uk-modal-body bg-white dark:bg-gray-800",
+        id=modal_id,
+        open=True
     )
-
 # Risk Assessment Components
 def risk_assessment_modal(floorplan_id, element_id):
     """Modal for viewing and managing risk assessments"""
@@ -266,7 +261,7 @@ def operating_instructions_modal(floorplan_id, element_id):
             return Div("Element nicht gefunden", cls="error-message")
         
         # Get operating instructions for this element
-        instruction = operating_instructions.fetchone(
+        instruction = operating_instructions(
             where="element_id=?",
             where_args=(element.id,)
         )
@@ -362,7 +357,7 @@ def operating_instructions_modal(floorplan_id, element_id):
         return modal_wrapper(f"Betriebsanweisung: {element.name}", content, "instructions-modal")
         
     except Exception as e:
-        return Div(f"Fehler Betriebsanweisung: {str(e)}", cls="error-message")
+        return Div(f"Fehler Betriebsanweisung: {str(e)} {type(e)}", cls="error-message")
 
 # Training Records Components
 def training_records_modal(floorplan_id, element_id):

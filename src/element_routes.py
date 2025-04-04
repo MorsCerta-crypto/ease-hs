@@ -19,6 +19,7 @@ from src.components.element_modals import (
     training_record_form
 )
 from src.s3 import upload_document_to_s3
+from src.components.element_modals import modal_wrapper
 
 # Initialize APIRouter
 er = APIRouter()
@@ -525,10 +526,10 @@ def create_instructions(floorplan_id: int, element_id: str, element_db_id: int,
 
 @er.post('/element/{floorplan_id}/{element_id}/instructions/update')
 def update_instructions(floorplan_id: int, element_id: str, element_db_id: int,
-                       hazard_symbols: list = None, hazard_texts: list = None,
-                       protection_symbols: list = None, protection_texts: list = None,
-                       first_aid_symbols: list = None, first_aid_texts: list = None,
-                       emergency_symbols: list = None, emergency_texts: list = None,
+                       hazard_symbols: list[str] = None, hazard_texts: list[str] = None,
+                       protection_symbols: list[str] = None, protection_texts: list[str] = None,
+                       first_aid_symbols: list[str] = None, first_aid_texts: list[str] = None,
+                       emergency_symbols: list[str] = None, emergency_texts: list[str] = None,
                        maintenance_disposal: str = ""):
     """Update existing operating instructions"""
     try:
@@ -604,7 +605,7 @@ def edit_training_form(floorplan_id: int, element_id: str, record_id: int):
 @er.post('/element/{floorplan_id}/{element_id}/training/create')
 def create_training(floorplan_id: int, element_id: str, employee_name: str, 
                    training_name: str, training_date: str, element_db_id: int,
-                   document_ids: list = None):
+                   document_ids: list[int] = None):
     """Create new training record"""
     try:
         # Prepare data
@@ -629,7 +630,7 @@ def create_training(floorplan_id: int, element_id: str, employee_name: str,
 @er.post('/element/{floorplan_id}/{element_id}/training/update/{record_id}')
 def update_training(floorplan_id: int, element_id: str, record_id: int, 
                    employee_name: str, training_name: str, training_date: str, 
-                   element_db_id: int, document_ids: list = None):
+                   element_db_id: int, document_ids: list[int] = None):
     """Update existing training record"""
     try:
         # Get training record
@@ -729,24 +730,3 @@ def upload_document(floorplan_id: int, element_id: str, document: dict):
         )
     except Exception as e:
         return Div(f"Fehler beim Hochladen: {str(e)}", cls="uk-alert uk-alert-danger", id="upload-status")
-
-# Helper function for modal wrapper
-def modal_wrapper(title, content, modal_id="modal"):
-    """Generic modal wrapper for all modals"""
-    return Div(
-        Div(
-            Div(
-                Div(
-                    H3(title, cls="uk-modal-title"),
-                    Button("×", cls="uk-modal-close-default", type="button", uk_close=""),
-                    cls="uk-modal-header"
-                ),
-                Div(content, cls="uk-modal-body"),
-                cls="uk-modal-dialog uk-margin-auto-vertical"
-            ),
-            cls="uk-modal-container",
-            id=modal_id,
-            uk_modal=""
-        ),
-        Script("UIkit.modal('#" + modal_id + "').show();")
-    ) 
