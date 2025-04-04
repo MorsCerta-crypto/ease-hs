@@ -120,30 +120,58 @@ def get_element_properties(floorplan_id: int, element_id: str):
             return Div("Element nicht gefunden", cls="error-message")
         
         special_types = ["machine", "closet", "emergency-kit"]
-        safety_link = ""
-        if props.element_type in special_types:
-            safety_link = DivVStacked(
-                A("Sicherheitsdaten bearbeiten", 
-                  href=f"/element/{floorplan_id}/{element_id}/safety",
-                  cls="uk-button uk-button-primary uk-margin-small-top"),
-                cls="mt-3"
-            )
         
-        return Div(
-            Card(
-                H4("Eigenschaften"),
-                Div(
-                    Form(
-                        LabelInput("Typ", name="element_type", value=props.element_type, readonly=True),
-                        cls="element-props-form"
+        if props.element_type in special_types:
+            return Div(
+                Card(
+                    H4("Eigenschaften"),
+                    Div(
+                        Form(
+                            LabelInput("Typ", name="element_type", value=props.element_type, readonly=True),
+                            LabelInput("Name", name="name", value=props.name),
+                            LabelTextArea("Allgemeine Informationen", name="description", value=props.description),
+                            cls="element-props-form",
+                            hx_post=f"/element/{floorplan_id}/{props.element_id}/update-basic",
+                            hx_target="#element-properties"
+                        ),
+                        Button("Gefährdungsbeurteilung", 
+                               cls="uk-button uk-button-primary uk-width-1-1 uk-margin-small-top",
+                               hx_get=f"/element/{floorplan_id}/{props.element_id}/risk-assessment",
+                               hx_target="#modal-container"),
+                        Button("Betriebsanweisung", 
+                               cls="uk-button uk-button-primary uk-width-1-1 uk-margin-small-top",
+                               hx_get=f"/element/{floorplan_id}/{props.element_id}/operating-instructions",
+                               hx_target="#modal-container"),
+                        Button("Schulungsnachweise", 
+                               cls="uk-button uk-button-primary uk-width-1-1 uk-margin-small-top",
+                               hx_get=f"/element/{floorplan_id}/{props.element_id}/training-records",
+                               hx_target="#modal-container"),
+                        A("Sicherheitsdaten bearbeiten", 
+                          href=f"/element/{floorplan_id}/{props.element_id}/safety",
+                          cls="uk-button uk-button-secondary uk-width-1-1 uk-margin-small-top"),
+                        Div(id="modal-container"),  # Container for modals
+                        cls="properties-panel"
                     ),
-                    safety_link,
-                    cls="properties-panel"
+                    cls=""
                 ),
                 cls=""
-            ),
-            cls=""
-        )
+            )
+        else:
+            # For non-special elements, just return the simple properties view
+            return Div(
+                Card(
+                    H4("Eigenschaften"),
+                    Div(
+                        Form(
+                            LabelInput("Typ", name="element_type", value=props.element_type, readonly=True),
+                            cls="element-props-form"
+                        ),
+                        cls="properties-panel"
+                    ),
+                    cls=""
+                ),
+                cls=""
+            )
     except Exception as e:
         print(f"Exception: {e}, type: {type(e)}")
         return Div(f"Fehler beim Laden der Eigenschaften: {str(e)}", cls="error-message")
@@ -421,4 +449,27 @@ def save_element_safety(floorplan_id: int, element_id: str, name: str, descripti
         return Redirect(f"/show-floorplan/{floorplan_id}")
     except Exception as e:
         return Div(f"Fehler beim Speichern der Sicherheitsdaten: {str(e)}", cls="error-message")
+
+@ar.post('/element/{floorplan_id}/{element_id}/update-basic')
+def update_element_basic(floorplan_id: int, element_id: str, name: str, description: str):
+    try:
+        # Get the element
+        element = elements.fetchone(
+            where="floorplan_id=? AND element_id=?",
+            where_args=(floorplan_id, element_id)
+        )
+        
+        if not element:
+            return Div("Element nicht gefunden", cls="error-message")
+        
+        # Update element basic info
+        element.name = name
+        element.description = description
+        element.updated_at = datetime.datetime.now().isoformat()
+        elements.update(element)
+        
+        # Return the updated properties view
+        return get_element_properties(floorplan_id, element_id)
+    except Exception as e:
+        return Div(f"Fehler beim Speichern: {str(e)}", cls="error-message")
 

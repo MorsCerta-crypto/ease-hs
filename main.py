@@ -2,6 +2,7 @@ from fasthtml.common import *
 from monsterui.all import *
 from pathlib import Path
 from src.floorplan import ar, floorplans
+from src.element_routes import er
 from datetime import datetime
 
 # Initialize FastHTML app with blue theme
@@ -12,7 +13,7 @@ app, rt = fast_app(live=True,
     ),
 )
 ar.to_app(app)
-
+er.to_app(app)
 # Home route
 @app.get("/")
 def index():
@@ -141,7 +142,7 @@ def index():
                     CardBody(
                         DivCentered(
                             H2("€99", cls="text-4xl font-bold text-center"),
-                            P("pro Monat", cls="text-center text-muted-foreground"),
+                            P("pro Jahr", cls="text-center text-muted-foreground"),
                             Div(
                                 Ul(cls=(ListT.bullet, "space-y-2 my-6"))(
                                     Li("Bis zu 5 Grundrisse"),
@@ -163,7 +164,7 @@ def index():
                     CardBody(
                         DivCentered(
                             H2("€199", cls="text-4xl font-bold text-center"),
-                            P("pro Monat", cls="text-center text-muted-foreground"),
+                            P("pro Jahr", cls="text-center text-muted-foreground"),
                             Div(
                                 Ul(cls=(ListT.bullet, "space-y-2 my-6"))(
                                     Li("Unbegrenzte Grundrisse"),
@@ -186,7 +187,7 @@ def index():
                     CardBody(
                         DivCentered(
                             H2("€399", cls="text-4xl font-bold text-center"),
-                            P("pro Monat", cls="text-center text-muted-foreground"),
+                            P("pro Jahr", cls="text-center text-muted-foreground"),
                             Div(
                                 Ul(cls=(ListT.bullet, "space-y-2 my-6"))(
                                     Li("Unbegrenzte Grundrisse"),

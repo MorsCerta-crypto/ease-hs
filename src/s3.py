@@ -46,10 +46,9 @@ def download_floorplan_from_s3(floorplan_id):
         print(f"Error downloading floorplan from S3: {str(e)}")
         return None
 
-def upload_document_to_s3(floorplan_id, element_id, file_data, filename):
+def upload_document_to_s3(file_data, s3_key):
     """Upload document to S3"""
     try:
-        s3_key = f"documents/{floorplan_id}/{element_id}/{filename}"
         s3_client.put_object(
             Bucket=S3_BUCKET,
             Key=s3_key,
